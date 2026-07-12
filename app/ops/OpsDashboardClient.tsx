@@ -38,6 +38,15 @@ export default function OpsDashboardClient({ userEmail, accessToken }: Props) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  // Form states for reporting an incident
+  const [incidentType, setIncidentType] = useState('medical');
+  const [incidentZone, setIncidentZone] = useState('Zone A');
+  const [incidentSeverity, setIncidentSeverity] = useState('medium');
+  const [incidentDesc, setIncidentDesc] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportSuccess, setReportSuccess] = useState<string | null>(null);
+
   /**
    * Wrapper for all /ops/* backend calls.
    * Automatically attaches the Authorization: Bearer <token> header.
@@ -80,6 +89,37 @@ export default function OpsDashboardClient({ userEmail, accessToken }: Props) {
     await supabase.auth.signOut();
     router.push('/login');
     router.refresh();
+  }
+
+  async function handleReportIncident(e: React.FormEvent) {
+    e.preventDefault();
+    setReportError(null);
+    setReportSuccess(null);
+    setReportLoading(true);
+
+    try {
+      const res = await apiFetch('/ops/incidents', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: incidentType,
+          description: incidentDesc,
+          zone: incidentZone,
+          severity: incidentSeverity,
+        }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body?.message ?? `Error ${res.status}`);
+      }
+
+      setReportSuccess(`Incident logged successfully! ID: ${body?.incident?.createdBy ?? 'n/a'}`);
+      setIncidentDesc('');
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : 'Failed to log incident');
+    } finally {
+      setReportLoading(false);
+    }
   }
 
   const roleColor = opsUser?.role ? (ROLE_COLORS[opsUser.role] ?? '#64748b') : '#64748b';
@@ -140,7 +180,7 @@ export default function OpsDashboardClient({ userEmail, accessToken }: Props) {
               <h2 className="ops-card-title">Welcome back</h2>
             </div>
             <p className="ops-welcome-text">
-              You&apos;re signed in as <strong>{userEmail}</strong>.
+              You&apos;re signed in as <strong>{userEmail}</strong>. 
               Use the panel below to load your role and access ops features.
             </p>
           </div>
@@ -192,23 +232,93 @@ export default function OpsDashboardClient({ userEmail, accessToken }: Props) {
             )}
           </div>
 
-          {/* Status card */}
-          <div className="ops-card ops-status-card">
+          {/* Active Incidents component */}
+          <div className="ops-card">
             <div className="ops-card-header">
-              <h2 className="ops-card-title">System Status</h2>
-              <div className="ops-status-dot-wrap">
-                <span className="ops-status-dot ops-status-online" />
-                <span className="ops-status-label">Operational</span>
-              </div>
+              <h2 className="ops-card-title">Active Incidents Feed</h2>
             </div>
-            <div className="ops-status-list">
-              {['Auth Service', 'Incident API', 'Zone Comms', 'Medical Relay'].map((svc) => (
-                <div key={svc} className="ops-status-item">
-                  <span className="ops-status-name">{svc}</span>
-                  <span className="ops-status-value ops-ok">Online</span>
+            <p className="ops-placeholder" style={{ color: '#64748b' }}>
+              No active incidents reported. Use the form below to report security or medical events.
+            </p>
+          </div>
+
+          {/* Zone Density Component */}
+          <div className="ops-card">
+            <div className="ops-card-header">
+              <h2 className="ops-card-title">Zone Density Tracker</h2>
+            </div>
+            <p className="ops-placeholder" style={{ color: '#64748b' }}>
+              All stadium zones are currently operating at normal density levels.
+            </p>
+          </div>
+
+          {/* Form to submit an incident report */}
+          <div className="ops-card ops-welcome-card">
+            <div className="ops-card-header">
+              <h2 className="ops-card-title">Report New Incident</h2>
+            </div>
+            <form onSubmit={handleReportIncident} className="ops-form">
+              <div className="ops-form-grid">
+                <div className="form-item">
+                  <label className="form-label">Type</label>
+                  <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)} className="form-select">
+                    <option value="medical">Medical</option>
+                    <option value="security">Security (Requires Admin)</option>
+                    <option value="crowd">Crowd Control</option>
+                    <option value="maintenance">Maintenance</option>
+                  </select>
                 </div>
-              ))}
-            </div>
+                
+                <div className="form-item">
+                  <label className="form-label">Zone</label>
+                  <select value={incidentZone} onChange={(e) => setIncidentZone(e.target.value)} className="form-select">
+                    <option value="Zone A">Zone A</option>
+                    <option value="Zone B">Zone B</option>
+                    <option value="Zone C">Zone C</option>
+                    <option value="Zone D">Zone D</option>
+                  </select>
+                </div>
+
+                <div className="form-item">
+                  <label className="form-label">Severity</label>
+                  <select value={incidentSeverity} onChange={(e) => setIncidentSeverity(e.target.value)} className="form-select">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-item" style={{ marginTop: '1rem' }}>
+                <label className="form-label">Description</label>
+                <textarea 
+                  value={incidentDesc} 
+                  onChange={(e) => setIncidentDesc(e.target.value)} 
+                  required
+                  placeholder="Provide incident details here..." 
+                  className="form-textarea" 
+                />
+              </div>
+
+              {reportError && (
+                <div className="ops-alert ops-alert-error" style={{ marginTop: '1rem' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  {reportError}
+                </div>
+              )}
+
+              {reportSuccess && (
+                <div className="ops-alert ops-alert-success" style={{ marginTop: '1rem' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  {reportSuccess}
+                </div>
+              )}
+
+              <button type="submit" disabled={reportLoading} className="ops-submit-btn" style={{ marginTop: '1rem' }}>
+                {reportLoading ? 'Logging Incident...' : 'Log Incident'}
+              </button>
+            </form>
           </div>
 
         </div>
@@ -302,6 +412,7 @@ export default function OpsDashboardClient({ userEmail, accessToken }: Props) {
           font-size: 0.8rem; margin-bottom: 1rem;
         }
         .ops-alert-error { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; }
+        .ops-alert-success { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); color: #a7f3d0; }
         .ops-profile { display: flex; flex-direction: column; gap: 0.75rem; }
         .ops-role-badge {
           display: inline-flex; align-items: center; gap: 0.5rem;
@@ -317,18 +428,39 @@ export default function OpsDashboardClient({ userEmail, accessToken }: Props) {
         .ops-detail-value { font-size: 0.8125rem; color: #94a3b8; font-weight: 500; }
         .ops-detail-code { font-size: 0.75rem; color: #64748b; font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px; }
         .ops-placeholder { font-size: 0.8125rem; color: #334155; margin: 0; }
-        .ops-status-card {}
-        .ops-status-dot-wrap { display: flex; align-items: center; gap: 0.4rem; }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .ops-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .ops-status-online { background: #10b981; animation: pulse 2s ease-in-out infinite; }
-        .ops-status-label { font-size: 0.75rem; color: #10b981; font-weight: 500; }
-        .ops-status-list { display: flex; flex-direction: column; gap: 0.625rem; }
-        .ops-status-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-        .ops-status-item:last-child { border-bottom: none; }
-        .ops-status-name { font-size: 0.8125rem; color: #64748b; }
-        .ops-status-value { font-size: 0.75rem; font-weight: 500; }
-        .ops-ok { color: #10b981; }
+
+        /* Form styling */
+        .ops-form { display: flex; flex-direction: column; gap: 1rem; }
+        .ops-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .form-item { display: flex; flex-direction: column; gap: 0.4rem; }
+        .form-label { font-size: 0.75rem; font-weight: 500; color: #94a3b8; }
+        .form-select {
+          padding: 0.6rem 0.75rem;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 8px;
+          color: #f1f5f9; font-size: 0.875rem;
+          outline: none;
+        }
+        .form-select option { background: #0e0e16; color: #f1f5f9; }
+        .form-textarea {
+          padding: 0.6rem 0.75rem;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 8px;
+          color: #f1f5f9; font-size: 0.875rem;
+          outline: none; min-height: 80px; resize: vertical;
+        }
+        .ops-submit-btn {
+          padding: 0.6rem 1.25rem;
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+          border: none; border-radius: 8px;
+          color: #fff; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+          transition: opacity 0.2s, transform 0.1s;
+        }
+        .ops-submit-btn:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+        .ops-submit-btn:active:not(:disabled) { transform: translateY(0); }
+        .ops-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
       `}</style>
     </div>
   );

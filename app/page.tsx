@@ -1,172 +1,64 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
+import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 
 interface Message {
   id: string;
-  sender: string;
+  sender: 'assistant' | 'user';
   text: string;
   timestamp: string;
-  avatarColor: string;
-  isSelf?: boolean;
 }
 
-const AVATAR_COLORS = [
-  'bg-indigo-500 text-white',
-  'bg-emerald-500 text-white',
-  'bg-amber-500 text-black',
-  'bg-rose-500 text-white',
-  'bg-cyan-500 text-black',
-  'bg-violet-500 text-white',
-  'bg-fuchsia-500 text-white',
-];
-
-const MOCK_NAMES = [
-  'WankhedeRoarer',
-  'CoverDriveKing',
-  'YorkerSpecialist',
-  'BoundaryRider',
-  'SuperFan_07',
-  'CricketCrazy',
-  'GoIndia_18',
-  'SpinWizard',
-  'StumpFlyer',
-  'StadiumWave',
-];
-
-const MOCK_COMMENTS = [
-  'BUMRAH! What a delivery! 🎯',
-  'That was a massive sixer! 🚀',
-  'Is that out? Checking DRS...',
-  'What a match, guys! Wankhede is absolutely electric today!',
-  'Can\'t believe he caught that! Catch of the tournament! 🏆',
-  'Let\'s gooo! 🇮🇳',
-  'Shami is on fire! 🔥',
-  'Need 12 runs from 6 balls. Absolute nail-biter!',
-  'What a captaincy move by Rohit.',
-  'Who\'s at the stadium right now? Stand B is roaring!',
-  'Unbelievable shot! Over the roof!',
+const SUGGESTIONS = [
+  'Show World Cup 2026 schedule',
+  'How to reach Wankhede Stadium?',
+  'What are the stadium baggage rules?',
 ];
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: '1',
-      sender: 'SuperFan_07',
-      text: 'Wankhede is absolutely packed today! Let\'s go!',
-      timestamp: '20:15',
-      avatarColor: 'bg-indigo-500 text-white',
-    },
-    {
-      id: '2',
-      sender: 'YorkerSpecialist',
-      text: 'Hoping for a Shardul Thakur masterclass in the death overs.',
-      timestamp: '20:16',
-      avatarColor: 'bg-emerald-500 text-white',
-    },
-    {
-      id: '3',
-      sender: 'BoundaryRider',
-      text: 'What a cover drive by Rohit! Shot of the day so far.',
-      timestamp: '20:18',
-      avatarColor: 'bg-rose-500 text-white',
+      id: 'welcome',
+      sender: 'assistant',
+      text: 'Hello! Welcome to StadiumSetu, your FIFA World Cup 2026 fan assistant. Ask me any questions about match schedules, transport guides, or stadium guidelines!',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
-
-  const [inputMessage, setInputMessage] = useState('');
-  const [nickname, setNickname] = useState('');
-  const [hasSetNickname, setHasSetNickname] = useState(false);
-  const [userColor, setUserColor] = useState('bg-indigo-500 text-white');
-
-  // Interactive Poll state
-  const [pollVotes, setPollVotes] = useState({ optionA: 142, optionB: 89, optionC: 67 });
-  const [hasVoted, setHasVoted] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-
-  // Cheers floaters
-  const [cheers, setCheers] = useState<{ id: number; emoji: string; x: number }[]>([]);
-  const cheerIdRef = useRef(0);
-
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Simulate incoming live messages
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const randomName = MOCK_NAMES[Math.floor(Math.random() * MOCK_NAMES.length)];
-      const randomText = MOCK_COMMENTS[Math.floor(Math.random() * MOCK_COMMENTS.length)];
-      const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
-      const now = new Date();
-      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  const handleSend = async (textToSend: string) => {
+    if (!textToSend.trim()) return;
 
-      const newMessage: Message = {
-        id: Math.random().toString(),
-        sender: randomName,
-        text: randomText,
-        timestamp: timeStr,
-        avatarColor: randomColor,
-      };
-
-      setMessages((prev) => [...prev, newMessage]);
-    }, 4500);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMessage.trim()) return;
-
-    const currentNickname = nickname.trim() || 'Anonymous Fan';
-    const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-    const newMsg: Message = {
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userMsg: Message = {
       id: Math.random().toString(),
-      sender: currentNickname,
-      text: inputMessage.trim(),
-      timestamp: timeStr,
-      avatarColor: userColor,
-      isSelf: true,
+      sender: 'user',
+      text: textToSend.trim(),
+      timestamp,
     };
 
-    setMessages((prev) => [...prev, newMsg]);
-    setInputMessage('');
-  };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput('');
+    setLoading(true);
 
-  const handleVote = (option: 'optionA' | 'optionB' | 'optionC') => {
-    if (hasVoted) return;
-    setPollVotes((prev) => ({
-      ...prev,
-      [option]: prev[option] + 1,
-    }));
-    setHasVoted(true);
-    setSelectedOption(option);
-  };
-
-  const handleCheer = (emoji: string) => {
-    const newCheer = {
-      id: cheerIdRef.current++,
-      emoji,
-      x: 10 + Math.random() * 80, // Random percentage offset
-    };
-    setCheers((prev) => [...prev, newCheer]);
-
-    // Clean up floaters
+    // Call simulated assistant response (with hooks for real backend integration later)
     setTimeout(() => {
-      setCheers((prev) => prev.filter((c) => c.id !== newCheer.id));
-    }, 2000);
-  };
-
-  const totalVotes = pollVotes.optionA + pollVotes.optionB + pollVotes.optionC;
-  const getPercent = (votes: number) => {
-    if (totalVotes === 0) return '0%';
-    return `${Math.round((votes / totalVotes) * 100)}%`;
+      const assistantMsg: Message = {
+        id: Math.random().toString(),
+        sender: 'assistant',
+        text: `I received your question: "${textToSend}". Connect me to the NestJS backend \`/fan/ask\` to fetch real-time FIFA World Cup 2026 answers!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+      setLoading(false);
+    }, 1000);
   };
 
   return (
@@ -194,343 +86,104 @@ export default function Home() {
 
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-semibold text-indigo-300">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-            14,204 Fans Live
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            Live
           </span>
-          <a
+          <Link
             href="/ops"
             className="text-xs text-slate-400 hover:text-white transition-colors duration-200 bg-slate-900 border border-slate-800 hover:border-slate-700 px-3.5 py-1.5 rounded-lg font-medium"
           >
             Staff Dashboard
-          </a>
+          </Link>
         </div>
       </header>
 
-      {/* Main layout */}
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
-        
-        {/* Left Column: Match Status & Interactive Polls */}
-        <div className="lg:col-span-1 flex flex-col gap-6">
-          {/* Match Scorecard Card */}
-          <section className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden backdrop-blur-sm">
-            <div className="absolute top-0 right-0 px-3 py-1 bg-red-500/10 border-b border-l border-red-500/20 text-[10px] font-bold text-red-400 rounded-bl-xl tracking-wider uppercase animate-pulse">
-              LIVE
-            </div>
-            
-            <p className="text-xs text-indigo-400 font-semibold tracking-wide uppercase mb-3">T20 Champions Trophy — Final</p>
-            
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center font-bold text-blue-400 text-sm">
-                  IND
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-100">India</h3>
-                  <p className="text-xs text-slate-400">Batting</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-black text-slate-50 tracking-tight">325/4</p>
-                <p className="text-xs text-slate-400">48.2 Overs</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-600/20 border border-amber-500/30 flex items-center justify-center font-bold text-amber-400 text-sm">
-                  AUS
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-100">Australia</h3>
-                  <p className="text-xs text-slate-400">Yet to bat</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-lg font-bold text-slate-500">—</p>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-800/60 pt-4 flex flex-col gap-2 text-xs">
-              <div className="flex justify-between text-slate-400">
-                <span>Batter at crease:</span>
-                <span className="font-medium text-slate-200">Rohit Sharma 142* (68)</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Bowler:</span>
-                <span className="font-medium text-slate-200">Mitchell Starc 9.2-0-84-2</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Venue:</span>
-                <span className="font-medium text-slate-200">Wankhede Stadium, Mumbai</span>
-              </div>
-            </div>
-          </section>
-
-          {/* Interactive Live Poll Card */}
-          <section className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-indigo-400">
-                <path d="M12 20V10M18 20V4M6 20v-6" />
-              </svg>
-              Live Poll
-            </h3>
-            <h4 className="font-bold text-slate-100 text-base mb-4">Who will win the Man of the Match award?</h4>
-
-            <div className="flex flex-col gap-3">
-              <button
-                id="poll-option-a"
-                disabled={hasVoted}
-                onClick={() => handleVote('optionA')}
-                className={`relative w-full overflow-hidden text-left p-3.5 rounded-xl border transition-all duration-300 ${
-                  selectedOption === 'optionA'
-                    ? 'bg-indigo-600/20 border-indigo-500'
-                    : 'bg-slate-950/40 border-slate-800/80 hover:border-slate-700'
-                }`}
-              >
-                <div
-                  className="absolute left-0 top-0 bottom-0 bg-indigo-500/10 transition-all duration-500"
-                  style={{ width: hasVoted ? getPercent(pollVotes.optionA) : '0%' }}
-                />
-                <div className="relative flex justify-between items-center text-xs font-semibold">
-                  <span className={selectedOption === 'optionA' ? 'text-indigo-300' : 'text-slate-200'}>Rohit Sharma</span>
-                  {hasVoted && <span className="text-slate-400">{getPercent(pollVotes.optionA)}</span>}
-                </div>
-              </button>
-
-              <button
-                id="poll-option-b"
-                disabled={hasVoted}
-                onClick={() => handleVote('optionB')}
-                className={`relative w-full overflow-hidden text-left p-3.5 rounded-xl border transition-all duration-300 ${
-                  selectedOption === 'optionB'
-                    ? 'bg-indigo-600/20 border-indigo-500'
-                    : 'bg-slate-950/40 border-slate-800/80 hover:border-slate-700'
-                }`}
-              >
-                <div
-                  className="absolute left-0 top-0 bottom-0 bg-indigo-500/10 transition-all duration-500"
-                  style={{ width: hasVoted ? getPercent(pollVotes.optionB) : '0%' }}
-                />
-                <div className="relative flex justify-between items-center text-xs font-semibold">
-                  <span className={selectedOption === 'optionB' ? 'text-indigo-300' : 'text-slate-200'}>Jasprit Bumrah</span>
-                  {hasVoted && <span className="text-slate-400">{getPercent(pollVotes.optionB)}</span>}
-                </div>
-              </button>
-
-              <button
-                id="poll-option-c"
-                disabled={hasVoted}
-                onClick={() => handleVote('optionC')}
-                className={`relative w-full overflow-hidden text-left p-3.5 rounded-xl border transition-all duration-300 ${
-                  selectedOption === 'optionC'
-                    ? 'bg-indigo-600/20 border-indigo-500'
-                    : 'bg-slate-950/40 border-slate-800/80 hover:border-slate-700'
-                }`}
-              >
-                <div
-                  className="absolute left-0 top-0 bottom-0 bg-indigo-500/10 transition-all duration-500"
-                  style={{ width: hasVoted ? getPercent(pollVotes.optionC) : '0%' }}
-                />
-                <div className="relative flex justify-between items-center text-xs font-semibold">
-                  <span className={selectedOption === 'optionC' ? 'text-indigo-300' : 'text-slate-200'}>Virat Kohli</span>
-                  {hasVoted && <span className="text-slate-400">{getPercent(pollVotes.optionC)}</span>}
-                </div>
-              </button>
-            </div>
-            {hasVoted && (
-              <p className="text-[10px] text-slate-500 text-center mt-3">Thank you for voting! Real-time results updated.</p>
-            )}
-          </section>
-        </div>
-
-        {/* Center/Right Columns: Chat Area */}
-        <div className="lg:col-span-2 flex flex-col bg-slate-900/40 border border-slate-800/80 rounded-2xl h-[550px] lg:h-[650px] overflow-hidden backdrop-blur-sm">
-          
-          {/* Chat header */}
-          <div className="p-4 border-b border-slate-800/60 flex items-center justify-between bg-slate-900/60">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Live Chat Feed</span>
-            </div>
-            {!hasSetNickname ? (
-              <button
-                id="set-nick-btn"
-                onClick={() => {
-                  const defaultNick = MOCK_NAMES[Math.floor(Math.random() * MOCK_NAMES.length)];
-                  setNickname(defaultNick);
-                  setUserColor(AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]);
-                  setHasSetNickname(true);
-                }}
-                className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-wider transition-colors duration-200"
-              >
-                Set Nickname
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Chatting as:</span>
-                <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/10">{nickname}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Messages list */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg) => (
+      {/* Main chat section */}
+      <main className="flex-1 max-w-4xl mx-auto w-full p-4 lg:p-6 flex flex-col gap-4 relative z-10 h-[calc(100vh-80px)]">
+        {/* Messages List */}
+        <div className="flex-1 overflow-y-auto bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 md:p-6 space-y-4 backdrop-blur-sm custom-scrollbar">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex gap-3 max-w-[85%] ${
+                msg.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
+              }`}
+            >
               <div
-                key={msg.id}
-                className={`flex gap-3 max-w-[85%] ${msg.isSelf ? 'ml-auto flex-row-reverse' : ''}`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                  msg.sender === 'user'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gradient-to-tr from-indigo-500 to-violet-600 text-white'
+                }`}
               >
-                <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center font-bold text-xs uppercase ${msg.avatarColor}`}>
-                  {msg.sender.substring(0, 2)}
-                </div>
-                <div>
-                  <div className={`flex items-baseline gap-2 mb-0.5 ${msg.isSelf ? 'justify-end' : ''}`}>
-                    <span className="text-xs font-bold text-slate-300">{msg.sender}</span>
-                    <span className="text-[10px] text-slate-500">{msg.timestamp}</span>
-                  </div>
-                  <div className={`p-3 rounded-2xl text-xs leading-relaxed ${
-                    msg.isSelf
-                      ? 'bg-indigo-600 text-white rounded-tr-none'
-                      : 'bg-slate-800/80 text-slate-200 rounded-tl-none'
-                  }`}>
-                    {msg.text}
-                  </div>
-                </div>
+                {msg.sender === 'user' ? 'U' : 'AI'}
               </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Cheer Floater Area & Controls */}
-          <div className="px-4 py-2 border-t border-slate-800/60 bg-slate-950/60 flex items-center justify-between gap-4 relative">
-            
-            {/* Render Floating Cheers */}
-            <div className="absolute inset-x-0 bottom-full h-48 pointer-events-none overflow-hidden z-20">
-              {cheers.map((c) => (
+              <div className="flex flex-col gap-1">
                 <div
-                  key={c.id}
-                  className="cheer-floater text-2xl absolute bottom-0 select-none animate-float-up"
-                  style={{ left: `${c.x}%` }}
+                  className={`p-3.5 rounded-2xl text-sm leading-relaxed ${
+                    msg.sender === 'user'
+                      ? 'bg-indigo-600/90 text-white rounded-tr-none'
+                      : 'bg-slate-800/80 border border-slate-700/30 text-slate-200 rounded-tl-none'
+                  }`}
                 >
-                  {c.emoji}
+                  {msg.text}
                 </div>
-              ))}
-            </div>
-
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Send Cheer:</span>
-            <div className="flex gap-2">
-              <button
-                id="cheer-btn-fire"
-                onClick={() => handleCheer('🔥')}
-                className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 flex items-center justify-center transition-all duration-200 active:scale-95 text-base"
-              >
-                🔥
-              </button>
-              <button
-                id="cheer-btn-clap"
-                onClick={() => handleCheer('👏')}
-                className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 flex items-center justify-center transition-all duration-200 active:scale-95 text-base"
-              >
-                👏
-              </button>
-              <button
-                id="cheer-btn-bat"
-                onClick={() => handleCheer('🏏')}
-                className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 flex items-center justify-center transition-all duration-200 active:scale-95 text-base"
-              >
-                🏏
-              </button>
-              <button
-                id="cheer-btn-wow"
-                onClick={() => handleCheer('🙌')}
-                className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 flex items-center justify-center transition-all duration-200 active:scale-95 text-base"
-              >
-                🙌
-              </button>
-            </div>
-          </div>
-
-          {/* Form message input */}
-          <div className="p-4 border-t border-slate-800/60 bg-slate-900/60">
-            {!hasSetNickname ? (
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  id="nickname-input"
-                  type="text"
-                  placeholder="Choose a screen nickname..."
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  className="flex-1 bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-indigo-500 text-slate-100"
-                />
-                <button
-                  id="join-chat-btn"
-                  onClick={() => {
-                    if (nickname.trim()) {
-                      setUserColor(AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]);
-                      setHasSetNickname(true);
-                    }
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-500 transition-colors duration-200 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/10 active:scale-[0.98]"
-                >
-                  Join Chat
-                </button>
+                <span className="text-[10px] text-slate-500 px-1">
+                  {msg.timestamp}
+                </span>
               </div>
-            ) : (
-              <form id="chat-send-form" onSubmit={handleSendMessage} className="flex gap-3">
-                <input
-                  id="chat-message-input"
-                  type="text"
-                  placeholder="Say something to the stadium..."
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  className="flex-1 bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 text-slate-100 placeholder-slate-500"
-                />
-                <button
-                  id="chat-send-btn"
-                  type="submit"
-                  className="bg-indigo-600 hover:bg-indigo-500 transition-colors duration-200 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/10 active:scale-[0.98] flex items-center gap-1.5"
-                >
-                  <span>Send</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                </button>
-              </form>
-            )}
-          </div>
+            </div>
+          ))}
 
+          {loading && (
+            <div className="flex gap-3 max-w-[85%] mr-auto items-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              </div>
+              <span className="text-xs text-slate-500 italic">Assistant is typing...</span>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
-      </main>
 
-      <style>{`
-        @keyframes float-up {
-          0% {
-            transform: translateY(0) scale(0.5);
-            opacity: 0;
-          }
-          15% {
-            opacity: 1;
-            transform: translateY(-20px) scale(1.1);
-          }
-          50% {
-            transform: translateY(-80px) translateX(-15px) scale(1);
-          }
-          85% {
-            opacity: 0.8;
-          }
-          100% {
-            transform: translateY(-180px) translateX(10px) scale(0.8);
-            opacity: 0;
-          }
-        }
-        .animate-float-up {
-          animation: float-up 2.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-        }
-        .cheer-floater {
-          will-change: transform, opacity;
-        }
-      `}</style>
+        {/* Suggestion Chips */}
+        <div className="flex flex-wrap gap-2 py-1 justify-center">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => handleSend(s)}
+              className="text-xs bg-slate-900/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 transition-colors text-slate-300 px-3 py-1.5 rounded-full cursor-pointer"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
+        {/* Input area */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend(input);
+          }}
+          className="flex gap-2 bg-slate-900/80 border border-slate-800 p-2 rounded-xl focus-within:border-indigo-500/80 transition-colors"
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask anything about FIFA World Cup 2026..."
+            className="flex-1 bg-transparent text-sm text-slate-100 placeholder-slate-500 outline-none px-3"
+            disabled={loading}
+          />
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 rounded-lg text-xs font-semibold text-white transition-colors duration-200 cursor-pointer"
+          >
+            Send
+          </button>
+        </form>
+      </main>
     </div>
   );
 }
