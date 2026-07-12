@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StadiumSetu
 
-## Getting Started
+Dual-interface FIFA World Cup 2026 fan assistant + ops dashboard.
 
-First, run the development server:
+## Stack
+- **Frontend:** Next.js (App Router) — `/web`
+- **Backend:** NestJS — `/api`
+- **DB + Realtime:** Supabase (Postgres)
+- **LLM:** Groq
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Repo layout
+```
+stadiumsetu/
+  api/          NestJS backend (fan chat + ops routes)
+  web/          Next.js frontend (fan UI + /ops dashboard)
+  schema.sql    Supabase table definitions + RLS
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup (one-time)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 1. Supabase
+- Create a project at supabase.com
+- Run `schema.sql` in the SQL editor
+- Copy your project URL + anon key + service role key
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. Backend (`/api`) — install
+```bash
+cd api
+npm install
+cp .env.example .env   # fill in GROQ_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY
+```
 
-## Learn More
+### 3. Frontend (`/web`) — install
+```bash
+cd web
+npm install
+cp .env.example .env.local   # fill in NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_API_URL
+```
 
-To learn more about Next.js, take a look at the following resources:
+`NEXT_PUBLIC_API_URL` should be `http://localhost:3001` for local dev.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Running the project (every time)
 
-## Deploy on Vercel
+You need **two terminals open at the same time** — one for backend, one for frontend.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Terminal 1 — Backend**
+```bash
+cd api
+npm run start:dev
+```
+Runs on `http://localhost:3001`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Terminal 2 — Frontend**
+```bash
+cd web
+npm run dev
+```
+Runs on `http://localhost:3000`
+
+Then open:
+- `http://localhost:3000` — fan chat assistant
+- `http://localhost:3000/ops` — live ops dashboard
+
+If either `.env` / `.env.local` is missing or has placeholder values, the app will run but API calls (Groq, Supabase) will fail.
+
+## What's wired up right now
+- `POST /fan/ask` → calls Groq, saves query+response to `fan_queries`
+- `GET /ops/incidents`, `POST /ops/incidents` → incident CRUD
+- `GET /ops/zones` → zone status
+- Frontend `/ops` subscribes to Supabase Realtime on `incidents` table — no polling
+
+## Next slice to build
+Pick ONE and we build it end-to-end before moving on:
+1. Zone density updates (who reports this — sensors? manual ops entry?)
+2. Auth for ops staff (Supabase Auth, role-gated)
+3. Fan chat streaming responses (currently returns full response, not streamed)
