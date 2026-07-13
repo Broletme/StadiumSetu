@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OpsModule } from './ops/ops.module';
+import { ZonesModule } from './zones/zones.module';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { OpsModule } from './ops/ops.module';
       isGlobal: true, // makes ConfigService available everywhere without importing ConfigModule
     }),
     OpsModule,
+    ZonesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
