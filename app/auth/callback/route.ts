@@ -4,8 +4,8 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  // If "next" is provided as a parameter, redirect there, otherwise go to /ops
-  const next = searchParams.get('next') ?? '/ops';
+  // If "next" is provided as a parameter, redirect there, otherwise go to /
+  const next = searchParams.get('next') ?? '/';
 
   if (code) {
     const supabase = await getSupabaseServerClient();
