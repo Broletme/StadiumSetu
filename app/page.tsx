@@ -46,23 +46,30 @@ function HomeContent() {
   const supabase = getSupabaseBrowserClient();
 
   useEffect(() => {
-    // Check initial session
+    // Check initial session — redirect to dashboard if already logged in
     supabase.auth.getSession().then((res: any) => {
       const session = res.data?.session;
-      setUser(session?.user ?? null);
-      setCheckingAuth(false);
+      if (session?.user) {
+        router.replace('/dashboard');
+      } else {
+        setCheckingAuth(false);
+      }
     });
 
-    // Listen for auth state changes
+    // Listen for auth state changes — redirect immediately on sign-in
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
-      setUser(session?.user ?? null);
-      setCheckingAuth(false);
+      if (session?.user) {
+        router.replace('/dashboard');
+      } else {
+        setUser(null);
+        setCheckingAuth(false);
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, router]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -152,57 +159,6 @@ function HomeContent() {
           </div>
           <p className="login-subtitle">Checking authorization state...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (user) {
-    // Authenticated View
-    return (
-      <div className="login-root" suppressHydrationWarning>
-        <div className="login-card" style={{ maxWidth: '520px' }} suppressHydrationWarning>
-          <div className="login-brand">
-            <div className="login-logo" style={{ background: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.25)' }} suppressHydrationWarning>
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-                <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#g2)" />
-                <path d="M16 8l-8 4.5v7L16 24l8-4.5v-7L16 8z" fill="rgba(255,255,255,0.15)" />
-                <defs>
-                  <linearGradient id="g2" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#10b981" />
-                    <stop offset="1" stopColor="#3b82f6" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
-            <h1 className="login-title">Access Granted</h1>
-            <p className="login-subtitle" style={{ color: '#10b981', fontWeight: 600 }}>Authenticated Session Active</p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-              <span style={{ color: '#64748b' }}>Identity:</span>
-              <span style={{ color: '#f1f5f9', fontWeight: 500 }}>{user.email}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-              <span style={{ color: '#64748b' }}>Provider:</span>
-              <span style={{ color: '#f1f5f9', fontWeight: 500, textTransform: 'capitalize' }}>{user.app_metadata?.provider || 'Email'}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-              <span style={{ color: '#64748b' }}>Session ID:</span>
-              <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: '0.75rem' }}>{user.id.substring(0, 18)}...</span>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSignOut}
-            className="form-submit"
-            style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', boxShadow: 'none', color: '#fca5a5' }}
-            disabled={loading}
-          >
-            {loading ? 'Signing out...' : 'Sign Out'}
-          </button>
-        </div>
-        <style>{styles}</style>
       </div>
     );
   }
