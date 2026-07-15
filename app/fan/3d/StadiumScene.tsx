@@ -143,7 +143,7 @@ function buildWedgeGeometry(
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-/** Single wedge mesh */
+/** Single wedge mesh — with heartbeat scale + glow pulse when highlighted */
 function Wedge({
   index,
   isLower,
@@ -163,6 +163,37 @@ function Wedge({
     [innerR, outerR, index, depth],
   );
 
+  const meshRef = useRef<THREE.Mesh>(null);
+  const matRef  = useRef<THREE.MeshStandardMaterial>(null);
+  const clockRef = useRef(0);
+
+  useFrame((_state, delta) => {
+    if (!highlighted) {
+      // Reset if this wedge stops being highlighted
+      if (meshRef.current) meshRef.current.scale.setScalar(1);
+      if (matRef.current) matRef.current.emissiveIntensity = 0;
+      return;
+    }
+    clockRef.current += delta;
+    const t = clockRef.current;
+
+    // ── Heartbeat scale ────────────────────────────────────────────────────
+    // Two quick sine bumps per cycle (~1.1 s), then a rest. Achieved by
+    // sampling a "double-sine" envelope: beat1 at phase=0, beat2 at phase=0.3.
+    const period = 1.1;
+    const phase  = (t % period) / period; // 0→1 per cycle
+    const beat1  = Math.max(0, Math.sin(phase * Math.PI * 2)) ** 3;
+    const beat2  = Math.max(0, Math.sin((phase - 0.28) * Math.PI * 2)) ** 3;
+    const heartbeat = beat1 * 0.055 + beat2 * 0.035; // combined bump magnitude
+    const scale = 1 + heartbeat;
+    if (meshRef.current) meshRef.current.scale.setScalar(scale);
+
+    // ── Glow pulse ─────────────────────────────────────────────────────────
+    // Smooth sine between 0.4 and 1.0, slightly faster than the heartbeat.
+    const glow = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 3.5));
+    if (matRef.current) matRef.current.emissiveIntensity = glow;
+  });
+
   const color = highlighted
     ? COLOR_HIGHLIGHTED
     : isLower
@@ -170,10 +201,11 @@ function Wedge({
       : COLOR_UPPER_DEFAULT;
 
   return (
-    <mesh geometry={geo} position={[0, y, 0]} castShadow receiveShadow>
+    <mesh ref={meshRef} geometry={geo} position={[0, y, 0]} castShadow receiveShadow>
       <meshStandardMaterial
+        ref={matRef}
         color={color}
-        roughness={0.55}
+        roughness={0.45}
         metalness={0.3}
         emissive={highlighted ? COLOR_HIGHLIGHTED : '#000000'}
         emissiveIntensity={highlighted ? 0.5 : 0}
