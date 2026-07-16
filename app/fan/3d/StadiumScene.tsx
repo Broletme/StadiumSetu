@@ -190,8 +190,12 @@ function buildWedgeGeometry(
     depth,
     bevelEnabled: false,
   });
-  // Rotate flat XY shape to lie on XZ plane
-  geo.rotateX(-Math.PI / 2);
+  // Rotate flat XY shape to lie on XZ plane.
+  // +π/2 (not -π/2) so that shape_y maps to world_z WITHOUT negation,
+  // keeping geometry consistent with gatePosition / wedgeCentre / etc.
+  // which all use z = cos(angle) * R.  Extrusion now extends downward
+  // in Y, compensated by the mesh position offset in <Wedge>.
+  geo.rotateX(Math.PI / 2);
   return geo;
 }
 
@@ -252,7 +256,7 @@ function Wedge({
       : COLOR_UPPER_DEFAULT;
 
   return (
-    <mesh ref={meshRef} geometry={geo} position={[0, y, 0]} castShadow receiveShadow>
+    <mesh ref={meshRef} geometry={geo} position={[0, y + depth, 0]} castShadow receiveShadow>
       <meshStandardMaterial
         ref={matRef}
         color={color}
