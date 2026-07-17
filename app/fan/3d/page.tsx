@@ -104,8 +104,8 @@ function Fan3DContent() {
       {/* ── Left panel (form + info card) ─────────────────────────────────── */}
       <div style={styles.panel}>
         <div style={styles.topNav}>
-          <Link href="/fan" style={styles.backButton}>
-            ← Back to 2D Finder
+          <Link href="/dashboard" style={styles.backButton}>
+            ← Back to Dashboard
           </Link>
         </div>
         
