@@ -2,7 +2,7 @@
 
 import { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Line, Html } from '@react-three/drei';
+import { OrbitControls, Line, Html, Text } from '@react-three/drei';
 import * as THREE from 'three';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -314,11 +314,30 @@ function buildEllipseRingGeometry(
 const SEAT_ROWS = 5;         // rows of seats per wedge
 const SEATS_PER_ROW = 8;     // seats per row within a wedge
 const SEAT_W = 0.12;         // seat block width
-const SEAT_H = 0.09;         // seat block height
-const SEAT_D = 0.10;         // seat block depth
+const SEAT_H = 0.06;         // seat cushion height
+const SEAT_D = 0.10;         // seat cushion depth
 
-/** Shared box geometry for all instanced seats (created once) */
-const seatBoxGeo = new THREE.BoxGeometry(SEAT_W, SEAT_H, SEAT_D);
+// ── Build chair geometries separately (cushion + backrest) ──────────────────
+// Instead of merging (which can cause ESM or attribute issues in some bundlers),
+// we use two separate geometries. They will share the same instance matrices.
+const seatCushionGeo = new THREE.BoxGeometry(SEAT_W, SEAT_H, SEAT_D);
+
+const backW = SEAT_W;
+const backH = SEAT_H * 1.6;
+const backD = SEAT_H * 0.5;
+const seatBackrestGeo = new THREE.BoxGeometry(backW, backH, backD);
+
+// Pre-transform the backrest geometry so its local origin matches the cushion's
+// local origin. This allows us to use the EXACT same instance matrix for both.
+const backMatrix = new THREE.Matrix4();
+backMatrix.makeRotationX(-0.14); // tilt back ~8°
+const offsetMatrix = new THREE.Matrix4().makeTranslation(
+  0,
+  SEAT_H / 2 + backH / 2 - 0.01,
+  -SEAT_D / 2 + backD / 2,
+);
+backMatrix.premultiply(offsetMatrix);
+seatBackrestGeo.applyMatrix4(backMatrix);
 
 /** Deterministic pseudo-random from index (avoids re-randomising each frame) */
 function pseudoRandom(seed: number): number {
@@ -406,7 +425,8 @@ function SeatRows({
   highlighted: boolean;
   isLower: boolean;
 }) {
-  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const cushionRef = useRef<THREE.InstancedMesh>(null);
+  const backrestRef = useRef<THREE.InstancedMesh>(null);
 
   const { count, matrices, colors } = useMemo(
     () => buildSeatInstances(sectionIndex, innerScale, outerScale, y, depth, highlighted, isLower),
@@ -415,19 +435,21 @@ function SeatRows({
 
   // Apply transforms + per-instance colors
   useMemo(() => {
-    if (!meshRef.current) return;
-    const mesh = meshRef.current;
-    for (let i = 0; i < count; i++) {
-      mesh.setMatrixAt(i, matrices[i]);
-      mesh.setColorAt(i, colors[i]);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    const applyToMesh = (mesh: THREE.InstancedMesh | null) => {
+      if (!mesh) return;
+      for (let i = 0; i < count; i++) {
+        mesh.setMatrixAt(i, matrices[i]);
+        mesh.setColorAt(i, colors[i]);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    };
+    applyToMesh(cushionRef.current);
+    applyToMesh(backrestRef.current);
   }, [count, matrices, colors]);
 
-  // We need a ref-callback approach: set data once the mesh mounts
-  const setRef = (inst: THREE.InstancedMesh | null) => {
-    (meshRef as React.MutableRefObject<THREE.InstancedMesh | null>).current = inst;
+  const setCushionRef = (inst: THREE.InstancedMesh | null) => {
+    (cushionRef as React.MutableRefObject<THREE.InstancedMesh | null>).current = inst;
     if (!inst) return;
     for (let i = 0; i < count; i++) {
       inst.setMatrixAt(i, matrices[i]);
@@ -437,20 +459,43 @@ function SeatRows({
     if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
   };
 
+  const setBackrestRef = (inst: THREE.InstancedMesh | null) => {
+    (backrestRef as React.MutableRefObject<THREE.InstancedMesh | null>).current = inst;
+    if (!inst) return;
+    for (let i = 0; i < count; i++) {
+      inst.setMatrixAt(i, matrices[i]);
+      inst.setColorAt(i, colors[i]);
+    }
+    inst.instanceMatrix.needsUpdate = true;
+    if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+  };
+
+  const materialProps = {
+    roughness: 0.55,
+    metalness: 0.2,
+    emissive: highlighted ? new THREE.Color(COLOR_HIGHLIGHTED) : new THREE.Color('#000000'),
+    emissiveIntensity: highlighted ? 0.4 : 0,
+  };
+
   return (
-    <instancedMesh
-      ref={setRef}
-      args={[seatBoxGeo, undefined, count]}
-      castShadow
-      receiveShadow
-    >
-      <meshStandardMaterial
-        roughness={0.55}
-        metalness={0.2}
-        emissive={highlighted ? COLOR_HIGHLIGHTED : '#000000'}
-        emissiveIntensity={highlighted ? 0.4 : 0}
-      />
-    </instancedMesh>
+    <group>
+      <instancedMesh
+        ref={setCushionRef}
+        args={[seatCushionGeo, undefined, count]}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial {...materialProps} />
+      </instancedMesh>
+      <instancedMesh
+        ref={setBackrestRef}
+        args={[seatBackrestGeo, undefined, count]}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial {...materialProps} />
+      </instancedMesh>
+    </group>
   );
 }
 
@@ -683,6 +728,48 @@ function FloodlightTowers() {
           </group>
         );
       })}
+    </group>
+  );
+}
+
+// ─── Tier Labels ─────────────────────────────────────────────────────────────
+
+/** Floating tier labels positioned behind the pitch at 90° */
+function TierLabels() {
+  // Position labels at angle 90° (positive-Z end of oval, behind the pitch)
+  const labelAngleDeg = 90;
+
+  // Lower tier label — sit above the outer edge of the lower tier
+  const lowerMidScale = (LOWER_INNER_SCALE + LOWER_OUTER_SCALE) / 2;
+  const [lx, lz] = bowlPosition(labelAngleDeg, lowerMidScale + 0.08);
+  const lowerY = LOWER_Y + LOWER_DEPTH + 0.8;
+
+  // Upper tier label — sit above the outer edge of the upper tier
+  const upperMidScale = (UPPER_INNER_SCALE + UPPER_OUTER_SCALE) / 2;
+  const [ux, uz] = bowlPosition(labelAngleDeg, upperMidScale + 0.08);
+  const upperY = UPPER_Y + UPPER_DEPTH + 1.2;
+
+  const labelStyle: React.CSSProperties = {
+    color: '#94a3b8',
+    fontSize: '11px',
+    fontWeight: 600,
+    fontFamily: "'Inter', system-ui, sans-serif",
+    letterSpacing: '0.18em',
+    opacity: 0.65,
+    pointerEvents: 'none',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+  };
+
+  return (
+    <group>
+      <Html position={[lx, lowerY, lz]} center style={labelStyle}>
+        LOWER TIER
+      </Html>
+      <Html position={[ux, upperY, uz]} center style={labelStyle}>
+        UPPER TIER
+      </Html>
     </group>
   );
 }
@@ -1030,6 +1117,9 @@ function Scene({
 
       {/* ── Floodlight towers ─────────────────────────────────────────── */}
       <FloodlightTowers />
+
+      {/* ── Tier labels ───────────────────────────────────────────────── */}
+      <TierLabels />
 
       {/* ── Gate markers ─────────────────────────────────────────────────── */}
       {uniqueGates.map((gate) => (

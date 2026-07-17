@@ -175,6 +175,11 @@ export default function Fan3DPage() {
 
       {/* ── 3-D canvas area ───────────────────────────────────────────────── */}
       <div style={styles.canvasWrapper}>
+        {/* Stadium name overlay (HTML, not 3D) */}
+        <div style={styles.stadiumName}>
+          <span style={styles.stadiumNameText}>StadiumSetu Arena</span>
+        </div>
+
         <StadiumScene zone={searchResult} uniqueGates={uniqueGates} />
 
         {/* Drag hint */}
@@ -385,5 +390,25 @@ const styles: Record<string, React.CSSProperties> = {
     pointerEvents: 'none',
     margin: 0,
     whiteSpace: 'nowrap',
+  },
+
+  // ── Stadium name overlay ─────────────────────────────────────────────────────
+  stadiumName: {
+    position: 'absolute',
+    top: '1.25rem',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 10,
+    pointerEvents: 'none',
+    userSelect: 'none',
+  },
+  stadiumNameText: {
+    fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+    fontSize: '1.05rem',
+    fontWeight: 700,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase' as const,
+    color: 'rgba(241, 245, 249, 0.55)',
+    textShadow: '0 1px 8px rgba(99, 102, 241, 0.25)',
   },
 };
