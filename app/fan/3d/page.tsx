@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, Suspense, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 // ─── Dynamic import (ssr: false) for the R3F Canvas ─────────────────────────
 const StadiumScene = dynamic(() => import('./StadiumScene'), {
@@ -36,7 +38,7 @@ type Zone = {
 
 // ─── Page component ───────────────────────────────────────────────────────────
 
-export default function Fan3DPage() {
+function Fan3DContent() {
   const [sectionQuery, setSectionQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(false);
@@ -46,9 +48,12 @@ export default function Fan3DPage() {
   // (starts empty; populated after first successful query)
   const [knownGates, setKnownGates] = useState<Gate[]>([]);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!sectionQuery.trim()) return;
+  const searchParams = useSearchParams();
+  const initialSection = searchParams.get('section');
+  const hasLoadedInitial = useRef(false);
+
+  const executeSearch = async (query: string) => {
+    if (!query.trim()) return;
 
     setSearchLoading(true);
     setSearchError(false);
@@ -56,12 +61,13 @@ export default function Fan3DPage() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/zones/seat/${encodeURIComponent(sectionQuery.trim())}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/zones/seat/${encodeURIComponent(query.trim())}`,
       );
       if (!res.ok) throw new Error('Not found');
 
       const data: Zone = await res.json();
       setSearchResult(data);
+      setSectionQuery(query.trim());
 
       // Accumulate unique gates so the markers persist across queries
       if (data.gate) {
@@ -77,6 +83,19 @@ export default function Fan3DPage() {
     }
   };
 
+  useEffect(() => {
+    if (initialSection && !hasLoadedInitial.current) {
+      hasLoadedInitial.current = true;
+      setSectionQuery(initialSection);
+      executeSearch(initialSection);
+    }
+  }, [initialSection]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeSearch(sectionQuery);
+  };
+
   // Deduplicated gate list for the scene
   const uniqueGates = useMemo(() => knownGates, [knownGates]);
 
@@ -84,6 +103,12 @@ export default function Fan3DPage() {
     <div style={styles.root}>
       {/* ── Left panel (form + info card) ─────────────────────────────────── */}
       <div style={styles.panel}>
+        <div style={styles.topNav}>
+          <Link href="/fan" style={styles.backButton}>
+            ← Back to 2D Finder
+          </Link>
+        </div>
+        
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.logo}>
@@ -189,6 +214,22 @@ export default function Fan3DPage() {
   );
 }
 
+export default function Fan3DPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={styles.root}>
+          <div style={styles.panel}>
+            <p style={{ color: '#64748b' }}>Loading 3D Finder...</p>
+          </div>
+        </div>
+      }
+    >
+      <Fan3DContent />
+    </Suspense>
+  );
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
@@ -210,12 +251,26 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
     padding: '2rem 1.75rem',
     borderRight: '1px solid rgba(255,255,255,0.06)',
+    position: 'relative',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0',
     overflowY: 'auto',
   },
-
+  topNav: {
+    marginBottom: '1.5rem',
+  },
+  backButton: {
+    display: 'inline-block',
+    color: '#94a3b8',
+    textDecoration: 'none',
+    fontSize: '0.85rem',
+    fontWeight: 500,
+    padding: '0.4rem 0.8rem',
+    background: 'rgba(255,255,255,0.02)',
+    border: '1px solid rgba(255,255,255,0.05)',
+    borderRadius: '8px',
+    transition: 'all 0.2s',
+  },
   header: {
     display: 'flex',
     alignItems: 'center',

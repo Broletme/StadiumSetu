@@ -1112,8 +1112,8 @@ function Scene({
       {/* ── Elliptical concourse ring ────────────────────────────────────── */}
       <ConcourseRing />
 
-      {/* ── Angled roof canopy ────────────────────────────────────────── */}
-      <RoofCanopy />
+      {/* ── Angled roof canopy (removed by request) ───────────────────────── */}
+      {/* <RoofCanopy /> */}
 
       {/* ── Floodlight towers ─────────────────────────────────────────── */}
       <FloodlightTowers />

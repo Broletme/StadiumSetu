@@ -11,6 +11,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const supabase = getSupabaseBrowserClient();
 
+  // hover state for each clickable card
+  const [hovered, setHovered] = useState<'seat' | '3d' | null>(null);
+
   useEffect(() => {
     // Guard: redirect to login if not authenticated
     supabase.auth.getSession().then((res: any) => {
@@ -42,72 +45,155 @@ export default function DashboardPage() {
   const displayName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() : '';
 
   return (
-    <div style={styles.root} suppressHydrationWarning>
-      <div style={styles.card} suppressHydrationWarning>
-        {/* Header with Logo and Sign Out */}
-        <div style={styles.header}>
-          <div style={styles.headerLeft}>
-            <div style={styles.logo}>
-              <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-                <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#dg1)" />
-                <path d="M16 8l-8 4.5v7L16 24l8-4.5v-7L16 8z" fill="rgba(255,255,255,0.15)" />
-                <defs>
-                  <linearGradient id="dg1" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#6366f1" />
-                    <stop offset="1" stopColor="#8b5cf6" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
-            <div>
-              <h1 style={styles.title}>StadiumSetu</h1>
-              <p style={styles.subtitle}>
-                Welcome back{displayName ? <>, <span style={styles.nameHighlight}>{displayName}</span></> : ''}
-              </p>
-            </div>
-          </div>
-          <button onClick={handleSignOut} style={styles.headerSignOut}>
-            Sign Out
-          </button>
-        </div>
+    <>
+      {/* ── Keyframe + responsive styles ─────────────────────────────────── */}
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes iconBounce {
+          0%, 100% { transform: translateY(0); }
+          40%       { transform: translateY(-4px); }
+          70%       { transform: translateY(-2px); }
+        }
 
-        {/* Welcome Section */}
-        <div style={styles.welcomeSection}>
-          <h2 style={styles.welcomeTitle}>Find your way around the stadium</h2>
-          <p style={styles.welcomeDesc}>
-            Navigate seating, gates, and facilities across FIFA World Cup 2026 venues with our interactive fan and operations tools.
-          </p>
-        </div>
+        .db-header   { animation: fadeUp 0.45s ease both; animation-delay: 0ms; }
+        .db-welcome  { animation: fadeUp 0.45s ease both; animation-delay: 90ms; }
+        .db-card-0   { animation: fadeUp 0.45s ease both; animation-delay: 180ms; }
+        .db-card-1   { animation: fadeUp 0.45s ease both; animation-delay: 270ms; }
+        .db-card-2   { animation: fadeUp 0.45s ease both; animation-delay: 360ms; }
 
-        {/* Feature Grid */}
-        <div style={styles.grid}>
-          <Link href="/fan" style={styles.cardLink}>
-            <div style={styles.featureCard}>
-              <h3 style={styles.featureTitle}>🔍 Find My Seat</h3>
-              <p style={styles.featureDesc}>Look up your section and find the nearest gate</p>
-            </div>
-          </Link>
+        /* icon bounce on card hover */
+        .db-feature-card:hover .db-card-icon {
+          animation: iconBounce 0.5s ease;
+        }
 
-          <Link href="/fan/3d" style={styles.cardLink}>
-            <div style={styles.featureCard}>
-              <h3 style={styles.featureTitle}>🏟️ 3D Stadium View</h3>
-              <p style={styles.featureDesc}>See your seat location in an interactive 3D stadium</p>
-            </div>
-          </Link>
+        /* Sign Out subtle hover */
+        .db-signout:hover {
+          background: rgba(255,255,255,0.07) !important;
+          border-color: rgba(255,255,255,0.18) !important;
+          color: #e2e8f0 !important;
+        }
 
-          {/* Disabled placeholder for Operations */}
-          <div style={{ ...styles.cardLink, ...styles.featureCardDisabled }}>
-            <div style={styles.featureCard}>
-              <div style={styles.featureTitleRow}>
-                <h3 style={styles.featureTitle}>⚙️ Operations</h3>
-                <span style={styles.badge}>Coming Soon</span>
+        /* ── Responsive ─────────────────────────────────── */
+        @media (max-width: 640px) {
+          .db-root { padding: 1rem !important; align-items: flex-start !important; padding-top: 2rem !important; }
+          .db-card { padding: 1.25rem !important; border-radius: 16px !important; }
+          .db-header-row { gap: 0.5rem !important; }
+          .db-subtitle { max-width: 140px !important; font-size: 0.75rem !important; }
+          .db-signout { padding: 0.35rem 0.6rem !important; font-size: 0.7rem !important; }
+          .db-welcome-title { font-size: 1rem !important; }
+          .db-welcome-desc  { font-size: 0.82rem !important; }
+          .db-feature-card  { padding: 1rem !important; }
+          .db-feature-title { font-size: 0.95rem !important; }
+        }
+      `}</style>
+
+      <div style={styles.root} className="db-root" suppressHydrationWarning>
+        <div style={styles.card} className="db-card" suppressHydrationWarning>
+
+          {/* ── Header ─────────────────────────────────────────────────────── */}
+          <div style={styles.header} className="db-header db-header-row">
+            <div style={styles.headerLeft}>
+              <div style={styles.logo}>
+                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                  <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#dg1)" />
+                  <path d="M16 8l-8 4.5v7L16 24l8-4.5v-7L16 8z" fill="rgba(255,255,255,0.15)" />
+                  <defs>
+                    <linearGradient id="dg1" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#6366f1" />
+                      <stop offset="1" stopColor="#8b5cf6" />
+                    </linearGradient>
+                  </defs>
+                </svg>
               </div>
-              <p style={styles.featureDesc}>Manage zones, real-time incidents and staff deployments</p>
+              <div>
+                <h1 style={styles.title}>StadiumSetu</h1>
+                <p style={styles.subtitle} className="db-subtitle">
+                  Welcome back{displayName ? <>, <span style={styles.nameHighlight}>{displayName}</span></> : ''}
+                </p>
+              </div>
             </div>
+            <button onClick={handleSignOut} style={styles.headerSignOut} className="db-signout">
+              Sign Out
+            </button>
+          </div>
+
+          {/* ── Welcome Section ─────────────────────────────────────────────── */}
+          <div style={styles.welcomeSection} className="db-welcome">
+            <h2 style={styles.welcomeTitle} className="db-welcome-title">Find your way around the stadium</h2>
+            <p style={styles.welcomeDesc} className="db-welcome-desc">
+              Navigate seating, gates, and facilities across FIFA World Cup 2026 venues with our interactive fan and operations tools.
+            </p>
+          </div>
+
+          {/* ── Feature Grid ─────────────────────────────────────────────────── */}
+          <div style={styles.grid}>
+
+            {/* Card 1 — Find My Seat */}
+            <div className="db-card-0">
+              <Link
+                href="/fan"
+                style={styles.cardLink}
+                onMouseEnter={() => setHovered('seat')}
+                onMouseLeave={() => setHovered(null)}
+              >
+                <div
+                  style={{
+                    ...styles.featureCard,
+                    ...(hovered === 'seat' ? styles.featureCardHovered : {}),
+                  }}
+                  className="db-feature-card"
+                >
+                  <h3 style={styles.featureTitle} className="db-feature-title">
+                    <span className="db-card-icon">🔍</span> Find My Seat
+                  </h3>
+                  <p style={styles.featureDesc}>Look up your section and find the nearest gate</p>
+                </div>
+              </Link>
+            </div>
+
+            {/* Card 2 — 3D Stadium View */}
+            <div className="db-card-1">
+              <Link
+                href="/fan/3d"
+                style={styles.cardLink}
+                onMouseEnter={() => setHovered('3d')}
+                onMouseLeave={() => setHovered(null)}
+              >
+                <div
+                  style={{
+                    ...styles.featureCard,
+                    ...(hovered === '3d' ? styles.featureCardHovered : {}),
+                  }}
+                  className="db-feature-card"
+                >
+                  <h3 style={styles.featureTitle} className="db-feature-title">
+                    <span className="db-card-icon">🏟️</span> 3D Stadium View
+                  </h3>
+                  <p style={styles.featureDesc}>See your seat location in an interactive 3D stadium</p>
+                </div>
+              </Link>
+            </div>
+
+            {/* Card 3 — Operations (disabled, no hover) */}
+            <div className="db-card-2">
+              <div style={{ ...styles.cardLink, ...styles.featureCardDisabled }}>
+                <div style={styles.featureCard}>
+                  <div style={styles.featureTitleRow}>
+                    <h3 style={styles.featureTitle}>⚙️ Operations</h3>
+                    <span style={styles.badge}>Coming Soon</span>
+                  </div>
+                  <p style={styles.featureDesc}>Manage zones, real-time incidents and staff deployments</p>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -122,16 +208,18 @@ const styles: Record<string, React.CSSProperties> = {
       'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,0.15) 0%, transparent 70%)',
     fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
     padding: '1.5rem',
+    boxSizing: 'border-box',
   },
   card: {
     width: '100%',
-    maxWidth: '560px', // slightly wider for the grid
+    maxWidth: '560px',
     background: 'rgba(255,255,255,0.03)',
     border: '1px solid rgba(255,255,255,0.08)',
     borderRadius: '20px',
     padding: '2rem',
     backdropFilter: 'blur(12px)',
     boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+    boxSizing: 'border-box',
   },
   header: {
     display: 'flex',
@@ -140,11 +228,14 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '2rem',
     paddingBottom: '1.5rem',
     borderBottom: '1px solid rgba(255,255,255,0.08)',
+    gap: '0.75rem',
   },
   headerLeft: {
     display: 'flex',
     alignItems: 'center',
     gap: '1rem',
+    minWidth: 0, // allow text truncation
+    flex: 1,
   },
   logo: {
     display: 'inline-flex',
@@ -162,6 +253,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: '#f1f5f9',
     margin: '0 0 0.2rem',
+    whiteSpace: 'nowrap',
   },
   subtitle: {
     fontSize: '0.8125rem',
@@ -173,7 +265,7 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '220px',
   },
   nameHighlight: {
-    color: '#e2e8f0', // Brighter white for the highlighted name
+    color: '#e2e8f0',
     fontWeight: 600,
     fontSize: '0.95rem',
   },
@@ -186,7 +278,9 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.75rem',
     fontWeight: 500,
     cursor: 'pointer',
-    transition: 'all 0.2s',
+    transition: 'all 0.2s ease',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
   welcomeSection: {
     marginBottom: '2rem',
@@ -218,11 +312,16 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(255,255,255,0.06)',
     borderRadius: '12px',
     padding: '1.25rem',
-    transition: 'all 0.2s ease',
+    transition: 'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
     cursor: 'pointer',
   },
+  featureCardHovered: {
+    transform: 'scale(1.02)',
+    border: '1px solid rgba(99,102,241,0.45)',
+    boxShadow: '0 0 0 1px rgba(99,102,241,0.2), 0 8px 32px rgba(99,102,241,0.12)',
+  },
   featureCardDisabled: {
-    opacity: 0.5,
+    opacity: 0.45,
     cursor: 'not-allowed',
     pointerEvents: 'none',
   },

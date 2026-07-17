@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 type Gate = {
   id: string;
@@ -73,6 +74,12 @@ export default function FanPage() {
   return (
     <div style={styles.root}>
       <div style={styles.card}>
+        <div style={styles.topNav}>
+          <Link href="/dashboard" style={styles.backButton}>
+            ← Back to Dashboard
+          </Link>
+        </div>
+
         <div style={styles.header}>
           <div style={styles.logo}>
             <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -126,6 +133,10 @@ export default function FanPage() {
                 <span style={styles.detailValue}>{searchResult.gate?.name || 'Unknown'}</span>
               </div>
             </div>
+            
+            <Link href={`/fan/3d?section=${searchResult.section_number}`} style={styles.view3dButton}>
+              Locate in 3D Stadium
+            </Link>
           </div>
         )}
 
@@ -184,6 +195,20 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '2rem',
     backdropFilter: 'blur(12px)',
     boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+  },
+  topNav: {
+    marginBottom: '1.5rem',
+  },
+  backButton: {
+    display: 'inline-block',
+    color: '#94a3b8',
+    textDecoration: 'none',
+    fontSize: '0.85rem',
+    fontWeight: 500,
+    padding: '0.4rem 0.8rem',
+    background: 'rgba(255,255,255,0.05)',
+    borderRadius: '8px',
+    transition: 'all 0.2s',
   },
   header: {
     display: 'flex',
@@ -287,6 +312,21 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#f8fafc',
     fontSize: '0.95rem',
     fontWeight: 500,
+  },
+  view3dButton: {
+    display: 'block',
+    textAlign: 'center',
+    width: '100%',
+    padding: '0.75rem 1.5rem',
+    marginTop: '1.25rem',
+    background: 'rgba(99,102,241,0.15)',
+    border: '1px solid rgba(99,102,241,0.3)',
+    borderRadius: '10px',
+    color: '#a5b4fc',
+    fontSize: '0.9rem',
+    fontWeight: 600,
+    textDecoration: 'none',
+    transition: 'background 0.2s',
   },
   divider: {
     height: '1px',
