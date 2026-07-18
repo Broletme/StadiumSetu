@@ -42,7 +42,8 @@ export class CongestionService {
         updated_at,
         section:section_id (
           section_number,
-          tier
+          tier,
+          section_index
         )
       `,
       );
@@ -58,6 +59,7 @@ export class CongestionService {
       updated_at: row.updated_at,
       section_number: row.section?.section_number ?? '',
       tier: row.section?.tier ?? '',
+      section_index: row.section?.section_index ?? 0,
     }));
   }
 
@@ -72,7 +74,7 @@ export class CongestionService {
     // Step 1 — fetch all section IDs with their section_numbers and gates
     const { data: sections, error: sectionsError } = await this.supabase
       .from('sections')
-      .select('id, section_number, tier, gate:nearest_gate_id(name)');
+      .select('id, section_number, tier, section_index, gate:nearest_gate_id(name)');
 
     if (sectionsError || !sections?.length) {
       throw new Error(`Failed to fetch sections: ${sectionsError?.message}`);
@@ -150,6 +152,7 @@ export class CongestionService {
         updated_at: row.updated_at,
         section_number: sec?.section_number ?? '',
         tier: (sec?.tier ?? '') as 'Lower Tier' | 'Upper Tier',
+        section_index: sec?.section_index ?? 0,
       };
     });
 

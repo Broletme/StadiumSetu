@@ -13,6 +13,7 @@ export interface CongestionRow {
   /** Joined from sections table */
   section_number: string;
   tier: 'Lower Tier' | 'Upper Tier';
+  section_index: number;
 }
 
 export interface AlertRow {
