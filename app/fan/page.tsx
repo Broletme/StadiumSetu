@@ -45,6 +45,39 @@ export default function FanPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  /* Fetch chat history on load */
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) return;
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const res = await fetch(`${apiUrl}/chat/history`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const history = await res.json();
+          if (history && history.length > 0) {
+            const formattedHistory: Message[] = history.map((msg: any, idx: number) => ({
+              id: `hist-${idx}`,
+              role: msg.role,
+              text: msg.content,
+              sectionData: msg.section_data ?? null,
+            }));
+            setMessages([GREETING, ...formattedHistory]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch chat history:', err);
+      }
+    };
+    fetchHistory();
+  }, []);
+
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || loading) return;
