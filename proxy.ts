@@ -9,9 +9,9 @@ import { createServerClient } from '@supabase/ssr';
  *
  * This proxy runs only on /ops/* routes. It reads the Supabase session from
  * cookies (set by @supabase/ssr browser client) and redirects unauthenticated
- * users to /login.
+ * users to /.
  *
- * The public fan chat at "/" and the /login page are NOT matched.
+ * The public fan chat/auth screen at "/" is NOT matched.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -50,7 +50,7 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const loginUrl = new URL('/login', request.nextUrl.origin);
+    const loginUrl = new URL('/', request.nextUrl.origin);
     return NextResponse.redirect(loginUrl);
   }
 
