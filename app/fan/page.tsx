@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 /* ─── Types ────────────────────────────────────────────────────────────── */
 
@@ -59,13 +60,25 @@ export default function FanPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat`, {
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${apiUrl}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ message: text }),
       });
 
-      if (!res.ok) throw new Error('Non-200 response');
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => 'No text');
+        console.error('API Error:', res.status, errorText);
+        throw new Error(`Non-200 response: ${res.status}`);
+      }
 
       const data: { reply: string; sectionData: SectionData | null } = await res.json();
 
@@ -77,7 +90,8 @@ export default function FanPage() {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch {
+    } catch (err) {
+      console.error('Chat error:', err);
       const errorMsg: Message = {
         id: `err-${Date.now()}`,
         role: 'assistant',
