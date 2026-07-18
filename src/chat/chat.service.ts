@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
 import { ZonesService } from '../zones/zones.service.js';
 import { SectionWithGateDto } from '../zones/zones.types.js';
@@ -16,6 +17,7 @@ import {
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
   private readonly groq: Groq;
+  private readonly supabase: SupabaseClient;
   private readonly model = 'llama-3.3-70b-versatile';
 
   constructor(
@@ -25,37 +27,51 @@ export class ChatService {
     this.groq = new Groq({
       apiKey: this.configService.getOrThrow<string>('GROQ_API_KEY'),
     });
+    this.supabase = createClient(
+      this.configService.getOrThrow<string>('SUPABASE_URL'),
+      this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY'),
+    );
   }
 
   // ── Public entry point ─────────────────────────────────────────────────────
 
-  async handleMessage(message: string): Promise<ChatResponseDto> {
+  async handleMessage(userId: string, message: string): Promise<ChatResponseDto> {
     // Step 1 — Extract intent + section number via Groq
     let intent: GroqIntentResult;
     try {
       intent = await this.extractIntent(message);
     } catch (err) {
       this.logger.error('Groq intent extraction failed', err);
-      return {
+      const response = {
         reply:
           "I'm having trouble connecting to the assistant right now. Please try again in a moment.",
         sectionData: null,
       };
+      this.saveMessages(userId, message, response).catch((e) => 
+        this.logger.error('Failed to save chat messages', e)
+      );
+      return response;
     }
 
     const { intent: intentType, sectionNumber, detectedLanguage } = intent;
 
     // Step 2 — Branch on intent
+    let response: ChatResponseDto;
+    
     if (intentType === 'SEAT_LOOKUP' && sectionNumber) {
-      return this.handleSeatLookup(sectionNumber, detectedLanguage);
+      response = await this.handleSeatLookup(sectionNumber, detectedLanguage);
+    } else if (intentType === 'GENERAL_HELP') {
+      response = await this.handleGeneralHelp(detectedLanguage);
+    } else {
+      // OUT_OF_SCOPE
+      response = await this.handleOutOfScope(detectedLanguage);
     }
 
-    if (intentType === 'GENERAL_HELP') {
-      return this.handleGeneralHelp(detectedLanguage);
-    }
+    this.saveMessages(userId, message, response).catch((e) => 
+      this.logger.error('Failed to save chat messages', e)
+    );
 
-    // OUT_OF_SCOPE
-    return this.handleOutOfScope(detectedLanguage);
+    return response;
   }
 
   // ── Intent extraction ──────────────────────────────────────────────────────
@@ -252,5 +268,42 @@ Don't answer the unrelated question. No JSON.`;
     }
 
     return { reply, sectionData: null };
+  }
+  // ── Database operations ────────────────────────────────────────────────────
+
+  private async saveMessages(userId: string, userMessage: string, assistantResponse: ChatResponseDto) {
+    const { error } = await this.supabase.from('chat_messages').insert([
+      {
+        user_id: userId,
+        role: 'user',
+        content: userMessage,
+        section_data: null,
+      },
+      {
+        user_id: userId,
+        role: 'assistant',
+        content: assistantResponse.reply,
+        section_data: assistantResponse.sectionData ?? null,
+      },
+    ]);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  async getHistory(userId: string) {
+    const { data, error } = await this.supabase
+      .from('chat_messages')
+      .select('role, content, section_data, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      this.logger.error('Failed to fetch chat history', error);
+      throw new Error('Could not fetch chat history');
+    }
+
+    return data;
   }
 }

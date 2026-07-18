@@ -1,12 +1,16 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ChatService } from './chat.service.js';
 import type { ChatResponseDto } from './chat.types.js';
+import { FanAuthGuard } from './guards/fan-auth.guard.js';
 
 /**
  * ChatController — fan-facing natural-language chat endpoint.
@@ -15,14 +19,17 @@ import type { ChatResponseDto } from './chat.types.js';
  *               plus optional structured sectionData for the frontend 3D view.
  */
 @Controller('chat')
+@UseGuards(FanAuthGuard)
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post()
   @HttpCode(HttpStatus.OK)
   async handleMessage(
+    @Req() req: any,
     @Body() body: Record<string, unknown>,
   ): Promise<ChatResponseDto> {
+    const userId = req.user.userId;
     const message = String(body?.message ?? '').trim();
 
     if (!message) {
@@ -32,6 +39,12 @@ export class ChatController {
       };
     }
 
-    return this.chatService.handleMessage(message);
+    return this.chatService.handleMessage(userId, message);
+  }
+
+  @Get('history')
+  async getHistory(@Req() req: any) {
+    const userId = req.user.userId;
+    return this.chatService.getHistory(userId);
   }
 }

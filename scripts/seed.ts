@@ -1,7 +1,7 @@
 /**
  * seed.ts — StadiumSetu zones seed script
  *
- * Inserts gates, sections, and seats into Supabase.
+ * Inserts gates, sections, seats, and section_congestion into Supabase.
  * Run with:
  *   npx ts-node -r tsconfig-paths/register scripts/seed.ts
  *
@@ -156,7 +156,10 @@ async function seed() {
 
   console.log(`\n✅  Inserted ${seatsData!.length} seats (5 per section)`);
 
-  // 4. Summary
+  // 4. Seed section_congestion baseline
+  await seedCongestion(sectionIds);
+
+  // 5. Summary
   console.log('\n─────────────────────────────────');
   console.log('📊  Seed summary:');
   console.log(`     Gates:    ${gatesData!.length}`);
@@ -170,3 +173,31 @@ seed().catch((err) => {
   console.error('❌  Unexpected error:', err);
   process.exit(1);
 });
+
+// ─────────────────────────────────────────────────────────────
+// Section congestion baseline seeder
+// Upserts one row per section into section_congestion with a
+// random device_count 0–30 and level 'low'.
+// Uses upsert so it's safe to re-run without duplicating rows.
+// ─────────────────────────────────────────────────────────────
+async function seedCongestion(sectionIds: string[]) {
+  console.log('\n🔄  Seeding section_congestion...');
+
+  const rows = sectionIds.map((section_id) => ({
+    section_id,
+    device_count: Math.floor(Math.random() * 31), // 0–30
+    level: 'low' as const,
+    updated_at: new Date().toISOString(),
+  }));
+
+  const { error } = await supabase
+    .from('section_congestion')
+    .upsert(rows, { onConflict: 'section_id' });
+
+  if (error) {
+    console.error('❌  Failed to seed section_congestion:', error.message);
+    process.exit(1);
+  }
+
+  console.log(`✅  Upserted ${rows.length} section_congestion rows (baseline device_count 0–30, level=low)`);
+}
