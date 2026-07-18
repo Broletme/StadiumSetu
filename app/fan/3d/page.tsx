@@ -107,6 +107,9 @@ function Fan3DContent() {
           <Link href="/dashboard" style={styles.backButton}>
             ← Back to Dashboard
           </Link>
+          <Link href="/fan" style={styles.askAiButton}>
+            ✨ Ask AI
+          </Link>
         </div>
         
         {/* Header */}
@@ -258,6 +261,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   topNav: {
     marginBottom: '1.5rem',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   backButton: {
     display: 'inline-block',
@@ -270,6 +276,19 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(255,255,255,0.05)',
     borderRadius: '8px',
     transition: 'all 0.2s',
+  },
+  askAiButton: {
+    display: 'inline-block',
+    color: '#ffffff',
+    textDecoration: 'none',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    padding: '0.4rem 0.8rem',
+    background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
+    border: '1px solid rgba(99,102,241,0.5)',
+    borderRadius: '8px',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    boxShadow: '0 4px 12px rgba(99,102,241,0.25)',
   },
   header: {
     display: 'flex',
