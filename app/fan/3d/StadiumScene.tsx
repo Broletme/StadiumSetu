@@ -452,7 +452,7 @@ function Wedge({
   useFrame((_state, delta) => {
     if (!highlighted) {
       if (meshRef.current) meshRef.current.scale.setScalar(1);
-      if (matRef.current)  matRef.current.emissiveIntensity = 0;
+      if (matRef.current)  matRef.current.emissiveIntensity = 0.25;
       return;
     }
     clockRef.current += delta;
@@ -477,19 +477,29 @@ function Wedge({
       ? COLOR_LOWER_DEFAULT
       : COLOR_UPPER_DEFAULT;
 
+  const baseColor = highlighted ? COLOR_HIGHLIGHTED : color;
+
   return (
     <group>
-      {/* Base wedge (structural shell) */}
+      {/* Base wedge — translucent with subtle emissive */}
       <mesh ref={meshRef} geometry={geo} position={[0, y + depth, 0]} castShadow receiveShadow>
         <meshStandardMaterial
           ref={matRef}
           color={color}
-          roughness={0.45}
-          metalness={0.3}
-          emissive={highlighted ? COLOR_HIGHLIGHTED : '#000000'}
-          emissiveIntensity={highlighted ? 0.5 : 0}
+          roughness={0.55}
+          metalness={0.15}
+          transparent
+          opacity={highlighted ? 0.5 : 0.35}
+          emissive={baseColor}
+          emissiveIntensity={highlighted ? 0.5 : 0.25}
         />
       </mesh>
+      {/* Back-side glow layer for highlighted sections */}
+      {highlighted && (
+        <mesh geometry={geo} position={[0, y + depth, 0]}>
+          <meshBasicMaterial color="#4ade80" transparent opacity={0.15} side={THREE.BackSide} />
+        </mesh>
+      )}
       {/* Instanced seat blocks sitting on top of the wedge */}
       <SeatRows
         sectionIndex={index}
@@ -570,6 +580,52 @@ function Goals() {
 }
 
 
+
+// ─── Roof Canopy ─────────────────────────────────────────────────────────────
+
+function RoofCanopy() {
+  const geo = useMemo(() => {
+    const segments = 64;
+    const innerScale = ROOF_SCALE - 0.20;
+    const outerScale = ROOF_SCALE + 0.45;
+    const innerY = 0.55;
+    const outerY = -0.20;
+    const thickness = 0.15;
+    const positions: number[] = [];
+    const indices: number[] = [];
+
+    for (let i = 0; i <= segments; i++) {
+      const deg = (i / segments) * 360;
+      const [ox, oz] = bowlPosition(deg, outerScale);
+      const [ix, iz] = bowlPosition(deg, innerScale);
+      positions.push(ox, outerY + thickness / 2, oz);
+      positions.push(ox, outerY - thickness / 2, oz);
+      positions.push(ix, innerY - thickness / 2, iz);
+      positions.push(ix, innerY + thickness / 2, iz);
+    }
+
+    for (let i = 0; i < segments; i++) {
+      const b = i * 4;
+      const n = (i + 1) * 4;
+      indices.push(b, n, n + 3, b, n + 3, b + 3);
+      indices.push(b + 1, b + 2, n + 2, b + 1, n + 2, n + 1);
+      indices.push(b, b + 1, n + 1, b, n + 1, n);
+      indices.push(b + 3, n + 3, n + 2, b + 3, n + 2, b + 2);
+    }
+
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    g.setIndex(indices);
+    g.computeVertexNormals();
+    return g;
+  }, []);
+
+  return (
+    <mesh geometry={geo} position={[0, ROOF_Y, 0]}>
+      <meshStandardMaterial color="#1e1b4b" roughness={0.5} metalness={0.6} transparent opacity={0.45} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
 
 // ─── Floodlight Towers ───────────────────────────────────────────────────────
 
@@ -993,10 +1049,16 @@ function Scene({
         />
       ))}
 
+      {/* ── Vomitory openings (tunnel entrances for all 24 sections) ─────── */}
+      {Array.from({ length: TOTAL_SECTIONS }, (_, i) => (
+        <Vomitory key={`vom-${i}`} sectionIndex={i} />
+      ))}
+
       {/* ── Elliptical concourse ring ────────────────────────────────────── */}
       <ConcourseRing />
 
-      {/* ── Angled roof canopy ────────────────────────────────────────────── */}
+      {/* ── Floodlight towers ─────────────────────────────────────────── */}
+      <FloodlightTowers />
 
       {/* ── Tier labels ───────────────────────────────────────────────── */}
       <TierLabels />
