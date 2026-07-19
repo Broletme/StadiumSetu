@@ -80,23 +80,33 @@ export class CongestionService {
       throw new Error(`Failed to fetch sections: ${sectionsError?.message}`);
     }
 
-    // Step 2 — pick 1–3 random sections
+    // Step 2 — pick 3-6 random sections
     const shuffled = [...sections].sort(() => Math.random() - 0.5);
-    const count = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+    const count = Math.floor(Math.random() * 4) + 3; // 3, 4, 5, or 6
     const spiked = shuffled.slice(0, count);
 
     // Fetch all gates to pass to Groq to prevent hallucinations
     const { data: gates } = await this.supabase.from('gates').select('name');
     const allGateNames = gates?.map((g) => g.name).join(', ') ?? 'Gate A, Gate B, Gate C, Gate D';
 
-    // Step 3 — build upsert payload
+    // Step 3 — build upsert payload with mix of medium and high
     const now = new Date().toISOString();
-    const upsertRows = spiked.map((s) => ({
-      section_id: s.id,
-      device_count: Math.floor(Math.random() * 151) + 150, // 150–300
-      level: 'high' as const,
-      updated_at: now,
-    }));
+    const upsertRows = spiked.map((s) => {
+      // ~40% high, ~60% medium
+      const isHigh = Math.random() < 0.4;
+      const level = isHigh ? 'high' : 'medium';
+      // High: 150-300, Medium: 60-120
+      const deviceCount = isHigh 
+        ? Math.floor(Math.random() * 151) + 150 
+        : Math.floor(Math.random() * 61) + 60;
+        
+      return {
+        section_id: s.id,
+        device_count: deviceCount,
+        level: level as 'high' | 'medium',
+        updated_at: now,
+      };
+    });
 
     const { data: updatedData, error: upsertError } = await this.supabase
       .from('section_congestion')
@@ -107,12 +117,15 @@ export class CongestionService {
       throw new Error(`Failed to update congestion: ${upsertError.message}`);
     }
 
-    // Step 4 — generate Groq alert for each spiked section
+    // Step 4 — generate Groq alert for each spiked section (HIGH ONLY)
     const newAlerts: AlertRow[] = [];
 
     for (let i = 0; i < spiked.length; i++) {
       const section = spiked[i];
       const row = upsertRows[i];
+
+      // Only generate alerts for 'high' severity
+      if (row.level !== 'high') continue;
 
       const alertMessage = await this.generateAlert(
         section.section_number,
@@ -148,7 +161,7 @@ export class CongestionService {
       return {
         section_id: row.section_id,
         device_count: row.device_count,
-        level: row.level as 'high',
+        level: row.level as 'high' | 'medium',
         updated_at: row.updated_at,
         section_number: sec?.section_number ?? '',
         tier: (sec?.tier ?? '') as 'Lower Tier' | 'Upper Tier',
