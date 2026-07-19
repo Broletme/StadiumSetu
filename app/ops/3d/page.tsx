@@ -50,6 +50,21 @@ const HeatmapScene = dynamic(() => import('./HeatmapScene'), {
   ),
 });
 
+const LEVEL_COLORS: Record<CongestionLevel, string> = {
+  low: '#22c55e',
+  medium: '#f59e0b',
+  high: '#ef4444',
+};
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  return `${Math.floor(min / 60)}h ago`;
+}
+
 const FALLBACK_GATES: Gate[] = [
   { id: 'gate-a', name: 'Gate A', angle_deg: 45, lat: null, lng: null },
   { id: 'gate-b', name: 'Gate B', angle_deg: 135, lat: null, lng: null },
@@ -66,6 +81,7 @@ function Ops3DContent() {
   const [authLoading, setAuthLoading] = useState(true);
   const [sections, setSections] = useState<CongestionRow[]>([]);
   const [gates, setGates] = useState<Gate[]>([]);
+  const [selectedSection, setSelectedSection] = useState<CongestionRow | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -201,8 +217,68 @@ function Ops3DContent() {
       </div>
 
       <div style={{ width: '100%', height: '100%' }}>
-        <HeatmapScene sections={sections} gates={displayGates} focusSectionNumber={focusSectionNumber} />
+        <HeatmapScene sections={sections} gates={displayGates} focusSectionNumber={focusSectionNumber} onSectionSelect={setSelectedSection} />
       </div>
+
+      {selectedSection && (
+        <>
+          <div
+            onClick={() => setSelectedSection(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 20 }}
+          />
+          <div style={{
+            position: 'absolute', zIndex: 25, bottom: 160, left: 16, maxWidth: 260,
+            background: 'rgba(15,15,25,0.9)', backdropFilter: 'blur(12px)',
+            borderRadius: '10px', border: `1px solid ${LEVEL_COLORS[selectedSection.level]}`,
+            borderLeft: `3px solid ${LEVEL_COLORS[selectedSection.level]}`,
+            padding: '16px 18px', color: '#e2e8f0',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+            fontFamily: "'Inter', system-ui, sans-serif",
+            fontSize: '0.82rem', lineHeight: 1.5,
+            transition: 'all 0.2s',
+          }}>
+            <button
+              onClick={() => setSelectedSection(null)}
+              style={{
+                position: 'absolute', top: 6, right: 8,
+                background: 'none', border: 'none', color: '#64748b', cursor: 'pointer',
+                fontSize: '1rem', lineHeight: 1, padding: '2px 4px',
+              }}
+            >
+              ×
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{
+                display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
+                background: LEVEL_COLORS[selectedSection.level],
+                boxShadow: `0 0 6px ${LEVEL_COLORS[selectedSection.level]}`,
+              }} />
+              <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                Section {selectedSection.section_number}
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 12px', marginBottom: 6 }}>
+              <span style={{ color: '#94a3b8' }}>Tier</span>
+              <span style={{ fontWeight: 600 }}>{selectedSection.tier}</span>
+              <span style={{ color: '#94a3b8' }}>Devices</span>
+              <span style={{ fontWeight: 600 }}>{selectedSection.device_count}</span>
+              <span style={{ color: '#94a3b8' }}>Status</span>
+              <span style={{
+                fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem',
+                color: LEVEL_COLORS[selectedSection.level],
+              }}>
+                {selectedSection.level}
+              </span>
+              <span style={{ color: '#94a3b8' }}>Updated</span>
+              <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.75rem' }}>
+                {relativeTime(selectedSection.updated_at)}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
     </main>
   );
 }

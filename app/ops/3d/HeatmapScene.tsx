@@ -1,19 +1,20 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Html } from '@react-three/drei';
+import { OrbitControls, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   TOTAL_SECTIONS,
   LOWER_INNER_SCALE, LOWER_OUTER_SCALE,
   UPPER_INNER_SCALE, UPPER_OUTER_SCALE,
   LOWER_Y, LOWER_DEPTH, UPPER_Y, UPPER_DEPTH,
-  CONCOURSE_INNER_SCALE, CONCOURSE_OUTER_SCALE,
+  CONCOURSE_INNER_SCALE, CONCOURSE_OUTER_SCALE, CONCOURSE_MID_SCALE,
   CONCOURSE_Y, CONCOURSE_THICKNESS,
   PITCH_LENGTH, PITCH_WIDTH,
   GATE_SCALE, GATE_Y,
   ROOF_SCALE, ROOF_Y,
+  VOM_HEIGHT,
   COLOR_GATE,
   bowlPosition, sectionAngleDeg,
 } from '@/lib/stadiumGeometry';
@@ -202,6 +203,175 @@ function buildSeatInstances(
   return { count, matrices, colors };
 }
 
+// ─── Path helpers (port of fan page's concourse arc logic) ────────────────────
+
+function concoursePoint(angleDeg: number): THREE.Vector3 {
+  const [x, z] = bowlPosition(angleDeg, CONCOURSE_MID_SCALE);
+  return new THREE.Vector3(x, CONCOURSE_Y + CONCOURSE_THICKNESS + 0.05, z);
+}
+
+function arcPoints(startDeg: number, endDeg: number, numPoints: number): THREE.Vector3[] {
+  let diff = endDeg - startDeg;
+  while (diff > 180) diff -= 360;
+  while (diff < -180) diff += 360;
+  const pts: THREE.Vector3[] = [];
+  for (let i = 0; i <= numPoints; i++) {
+    const t = i / numPoints;
+    pts.push(concoursePoint(startDeg + diff * t));
+  }
+  return pts;
+}
+
+function wedgeCentre(index: number, isLower: boolean): THREE.Vector3 {
+  const innerScale = isLower ? LOWER_INNER_SCALE : UPPER_INNER_SCALE;
+  const outerScale = isLower ? LOWER_OUTER_SCALE : UPPER_OUTER_SCALE;
+  const y = isLower ? LOWER_Y : UPPER_Y;
+  const depth = isLower ? LOWER_DEPTH : UPPER_DEPTH;
+  const deg = sectionAngleDeg(index);
+  const midScale = (innerScale + outerScale) / 2;
+  const [x, z] = bowlPosition(deg, midScale);
+  return new THREE.Vector3(x, y + depth / 2, z);
+}
+
+function gatePosition(angleDeg: number): THREE.Vector3 {
+  const [x, z] = bowlPosition(angleDeg, GATE_SCALE);
+  return new THREE.Vector3(x, GATE_Y, z);
+}
+
+function nearestGate(sectionDeg: number, gates: Gate[]): Gate {
+  let best = gates[0];
+  let bestDist = Infinity;
+  for (const g of gates) {
+    let d = Math.abs(sectionDeg - g.angle_deg);
+    if (d > 180) d = 360 - d;
+    if (d < bestDist) { bestDist = d; best = g; }
+  }
+  return best;
+}
+
+// ─── PathSphere (animated dot along a curve) ─────────────────────────────────
+
+function PathSphere({ curve, phaseOffset, color }: {
+  curve: THREE.CatmullRomCurve3;
+  phaseOffset: number;
+  color: string;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const tRef = useRef(phaseOffset);
+
+  useFrame((_state, delta) => {
+    tRef.current = (tRef.current + delta * 0.22) % 1;
+    if (meshRef.current) {
+      meshRef.current.position.copy(curve.getPoint(tRef.current));
+    }
+  });
+
+  return (
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[0.12, 8, 8]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.9} transparent opacity={0.85} />
+    </mesh>
+  );
+}
+
+// ─── Dispatch paths (priority-ordered curved routes) ─────────────────────────
+
+interface PriorityPath {
+  section: CongestionRow;
+  priority: number;
+  curve: THREE.CatmullRomCurve3;
+  curvePoints: THREE.Vector3[];
+  color: string;
+  gatePos: THREE.Vector3;
+}
+
+function DispatchPaths({ sections, gates }: { sections: CongestionRow[]; gates: Gate[] }) {
+  const priorityPaths: PriorityPath[] = useMemo(() => {
+    const nonLow = sections
+      .filter((s) => s.level === 'high' || s.level === 'medium')
+      .sort((a, b) => b.device_count - a.device_count);
+
+    return nonLow.map((section, idx) => {
+      const isLower = section.tier.toLowerCase().includes('lower');
+      const sectionDeg = sectionAngleDeg(section.section_index);
+      const gate = nearestGate(sectionDeg, gates);
+      const gateDeg = gate.angle_deg;
+      const innerScale = isLower ? LOWER_INNER_SCALE : UPPER_INNER_SCALE;
+      const outerScale = isLower ? LOWER_OUTER_SCALE : UPPER_OUTER_SCALE;
+      const y = isLower ? LOWER_Y : UPPER_Y;
+      const depth = isLower ? LOWER_DEPTH : UPPER_DEPTH;
+
+      const gp = gatePosition(gateDeg);
+      const sp = wedgeCentre(section.section_index, isLower);
+      const conAtGate = concoursePoint(gateDeg);
+      const arcPts = arcPoints(gateDeg, sectionDeg, 32);
+      const [vomX, vomZ] = bowlPosition(sectionDeg, UPPER_OUTER_SCALE - 0.01);
+      const vomEntrance = new THREE.Vector3(vomX, CONCOURSE_Y + CONCOURSE_THICKNESS + 0.05, vomZ);
+      const [vinX, vinZ] = bowlPosition(sectionDeg, UPPER_INNER_SCALE + 0.04);
+      const vomInside = new THREE.Vector3(vinX, UPPER_Y + VOM_HEIGHT / 2, vinZ);
+
+      const waypoints: THREE.Vector3[] = [
+        gp.clone(), conAtGate,
+        ...arcPts.slice(1, -1),
+        arcPts[arcPts.length - 1],
+        vomEntrance, vomInside,
+        sp.clone(),
+      ];
+
+      const curve = new THREE.CatmullRomCurve3(waypoints, false, 'catmullrom', 0.3);
+      return {
+        section,
+        priority: idx + 1,
+        curve,
+        curvePoints: curve.getPoints(80),
+        color: LEVEL_COLORS[section.level],
+        gatePos: gp.clone(),
+      };
+    });
+  }, [sections, gates]);
+
+  // TODO: remove this log once confirmed working
+  useEffect(() => {
+    if (priorityPaths.length === 0) return;
+    const list = priorityPaths.map((p) => ({
+      section_number: p.section.section_number,
+      device_count: p.section.device_count,
+      level: p.section.level,
+      rank: p.priority,
+    }));
+    console.log('[DispatchPaths] Priority list:', list);
+  }, [priorityPaths]);
+
+  return (
+    <group>
+      {priorityPaths.map((p) => (
+        <group key={`path-${p.section.section_id}`}>
+          <Line points={p.curvePoints} color={p.color} lineWidth={2} transparent opacity={0.5} />
+          <Html
+            position={[p.gatePos.x, p.gatePos.y + 2.8, p.gatePos.z]}
+            center
+            style={{
+              color: '#ffffff', fontSize: '16px', fontWeight: 900,
+              fontFamily: "'Inter', system-ui, sans-serif",
+              background: p.section.level === 'high' ? '#ef4444' : '#f59e0b',
+              width: 32, height: 32, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '2px solid rgba(255,255,255,0.5)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+              pointerEvents: 'none', userSelect: 'none',
+            }}
+          >
+            {p.priority}
+          </Html>
+          {Array.from({ length: 3 }, (_, i) => (
+            <PathSphere key={i} curve={p.curve} phaseOffset={i / 3} color={p.color} />
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
 // ─── Structural wedge (subtle background for seats) ───────────────────────────
 
 function WedgeBase({
@@ -226,13 +396,7 @@ function WedgeBase({
   const color = LEVEL_COLORS[level];
   return (
     <mesh geometry={geo} position={[0, y + depth, 0]} castShadow receiveShadow>
-      <meshStandardMaterial
-        color={color}
-        roughness={0.6}
-        metalness={0.15}
-        transparent
-        opacity={0.18}
-      />
+      <meshStandardMaterial color={color} roughness={0.6} metalness={0.15} transparent opacity={0.18} />
     </mesh>
   );
 }
@@ -255,6 +419,9 @@ function SeatRows({
 
   const cushionRef = useRef<THREE.InstancedMesh>(null);
   const backrestRef = useRef<THREE.InstancedMesh>(null);
+  const cushionMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const backrestMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const clockRef = useRef(0);
 
   const { count, matrices, colors } = useMemo(
     () => buildSeatInstances(sectionIndex, innerScale, outerScale, y, depth, level),
@@ -274,6 +441,16 @@ function SeatRows({
     apply(cushionRef.current);
     apply(backrestRef.current);
   }, [count, matrices, colors]);
+
+  useFrame((_state, delta) => {
+    if (level !== 'high') return;
+    if (!cushionMatRef.current || !backrestMatRef.current) return;
+    clockRef.current += delta;
+    const pulse = 0.5 + 0.5 * Math.sin(clockRef.current * 3.5);
+    const intensity = 0.4 + 1.1 * pulse;
+    cushionMatRef.current.emissiveIntensity = intensity;
+    backrestMatRef.current.emissiveIntensity = intensity;
+  });
 
   const setCushionRef = (inst: THREE.InstancedMesh | null) => {
     (cushionRef as React.MutableRefObject<THREE.InstancedMesh | null>).current = inst;
@@ -309,28 +486,37 @@ function SeatRows({
   return (
     <group>
       <instancedMesh ref={setCushionRef} args={[seatCushionGeo, undefined, count]} castShadow receiveShadow>
-        <meshStandardMaterial {...materialProps} />
+        <meshStandardMaterial ref={cushionMatRef} {...materialProps} />
       </instancedMesh>
       <instancedMesh ref={setBackrestRef} args={[seatBackrestGeo, undefined, count]} castShadow receiveShadow>
-        <meshStandardMaterial {...materialProps} />
+        <meshStandardMaterial ref={backrestMatRef} {...materialProps} />
       </instancedMesh>
     </group>
   );
 }
 
-// ─── Section (base + seats) ───────────────────────────────────────────────────
+// ─── Section (base + seats + click target) ────────────────────────────────────
 
 function Section({
   sectionIndex,
   isLower,
   level,
+  sectionData,
+  onSectionSelect,
 }: {
   sectionIndex: number;
   isLower: boolean;
   level: CongestionLevel;
+  sectionData: CongestionRow | null;
+  onSectionSelect: ((s: CongestionRow) => void) | undefined;
 }) {
   return (
-    <group>
+    <group
+      onClick={(e) => {
+        e.stopPropagation();
+        if (sectionData && onSectionSelect) onSectionSelect(sectionData);
+      }}
+    >
       <WedgeBase sectionIndex={sectionIndex} isLower={isLower} level={level} />
       <SeatRows sectionIndex={sectionIndex} isLower={isLower} level={level} />
     </group>
@@ -381,11 +567,6 @@ function ConcourseRing() {
 }
 
 // ─── Gate marker ──────────────────────────────────────────────────────────────
-
-function gatePosition(angleDeg: number): THREE.Vector3 {
-  const [x, z] = bowlPosition(angleDeg, GATE_SCALE);
-  return new THREE.Vector3(x, GATE_Y, z);
-}
 
 function GateMarker({ gate }: { gate: Gate }) {
   const pos = gatePosition(gate.angle_deg);
@@ -492,10 +673,7 @@ function RoofCanopy() {
 
   return (
     <mesh geometry={geo} position={[0, ROOF_Y, 0]}>
-      <meshStandardMaterial
-        color="#1e1b4b" roughness={0.5} metalness={0.6}
-        transparent opacity={0.45} side={THREE.DoubleSide}
-      />
+      <meshStandardMaterial color="#1e1b4b" roughness={0.5} metalness={0.6} transparent opacity={0.45} side={THREE.DoubleSide} />
     </mesh>
   );
 }
@@ -538,16 +716,27 @@ function Scene({
   sections,
   gates,
   focusSectionNumber,
+  onSectionSelect,
 }: {
   sections: CongestionRow[];
   gates: Gate[];
   focusSectionNumber?: string;
+  onSectionSelect: ((s: CongestionRow) => void) | undefined;
 }) {
   const sectionMap = useMemo(() => {
     const m = new Map<string, CongestionLevel>();
     sections.forEach((s) => {
       const key = `${s.tier.toLowerCase().includes('lower') ? 'lower' : 'upper'}-${s.section_index}`;
       m.set(key, s.level);
+    });
+    return m;
+  }, [sections]);
+
+  const sectionDataMap = useMemo(() => {
+    const m = new Map<string, CongestionRow>();
+    sections.forEach((s) => {
+      const key = `${s.tier.toLowerCase().includes('lower') ? 'lower' : 'upper'}-${s.section_index}`;
+      m.set(key, s);
     });
     return m;
   }, [sections]);
@@ -575,12 +764,26 @@ function Scene({
 
       <Pitch />
 
-      {Array.from({ length: TOTAL_SECTIONS }, (_, i) => (
-        <Section key={`lower-${i}`} sectionIndex={i} isLower level={sectionMap.get(`lower-${i}`) ?? 'low'} />
-      ))}
-      {Array.from({ length: TOTAL_SECTIONS }, (_, i) => (
-        <Section key={`upper-${i}`} sectionIndex={i} isLower={false} level={sectionMap.get(`upper-${i}`) ?? 'low'} />
-      ))}
+      {Array.from({ length: TOTAL_SECTIONS }, (_, i) => {
+        const key = `lower-${i}`;
+        return (
+          <Section key={key} sectionIndex={i} isLower level={sectionMap.get(key) ?? 'low'}
+            sectionData={sectionDataMap.get(key) ?? null}
+            onSectionSelect={onSectionSelect}
+          />
+        );
+      })}
+      {Array.from({ length: TOTAL_SECTIONS }, (_, i) => {
+        const key = `upper-${i}`;
+        return (
+          <Section key={key} sectionIndex={i} isLower={false} level={sectionMap.get(key) ?? 'low'}
+            sectionData={sectionDataMap.get(key) ?? null}
+            onSectionSelect={onSectionSelect}
+          />
+        );
+      })}
+
+      <DispatchPaths sections={sections} gates={gates} />
 
       <ConcourseRing />
       <RoofCanopy />
@@ -599,14 +802,26 @@ export default function HeatmapScene({
   sections,
   gates,
   focusSectionNumber,
+  onSectionSelect,
 }: {
   sections: CongestionRow[];
   gates: Gate[];
   focusSectionNumber?: string;
+  onSectionSelect?: (s: CongestionRow | null) => void;
 }) {
   return (
-    <Canvas shadows camera={{ position: [15, 20, 20], fov: 45 }} style={{ background: 'transparent' }}>
-      <Scene sections={sections} gates={gates} focusSectionNumber={focusSectionNumber} />
+    <Canvas
+      shadows
+      camera={{ position: [15, 20, 20], fov: 45 }}
+      style={{ background: 'transparent' }}
+      onPointerMissed={() => onSectionSelect?.(null)}
+    >
+      <Scene
+        sections={sections}
+        gates={gates}
+        focusSectionNumber={focusSectionNumber}
+        onSectionSelect={onSectionSelect}
+      />
     </Canvas>
   );
 }
