@@ -524,12 +524,6 @@ export default function OpsDashboardPage() {
     }
   }
 
-  const sectionNumBySectionId = useMemo(() => {
-    const m = new Map<string, string>();
-    sections.forEach((s) => m.set(s.section_id, s.section_number));
-    return m;
-  }, [sections]);
-
   const alertGroups = useMemo(() => {
     const groups = new Map<string, AlertRow[]>();
     for (const alert of alerts) {
@@ -542,12 +536,23 @@ export default function OpsDashboardPage() {
         const sorted = items.sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         );
-        return { key, top: sorted[0], rest: sorted.slice(1) };
+        const section = sorted[0].section_id
+          ? sections.find((s) => s.section_id === sorted[0].section_id)
+          : undefined;
+        return {
+          key,
+          top: sorted[0],
+          rest: sorted.slice(1),
+          sectionNumber: section?.section_number,
+          tier: section?.tier ?? '',
+          deviceCount: section?.device_count ?? 0,
+        };
       })
-      .sort(
-        (a, b) => new Date(b.top.created_at).getTime() - new Date(a.top.created_at).getTime(),
-      );
-  }, [alerts]);
+      .sort((a, b) => {
+        if (b.deviceCount !== a.deviceCount) return b.deviceCount - a.deviceCount;
+        return new Date(b.top.created_at).getTime() - new Date(a.top.created_at).getTime();
+      });
+  }, [alerts, sections]);
 
   const statusCounts = useMemo(
     () =>
@@ -692,86 +697,123 @@ export default function OpsDashboardPage() {
                 <p className="m-0 mt-1 text-sm text-slate-500">Newest incidents appear first</p>
               </div>
 
-              <div className="ops-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
+              <div className="ops-scrollbar flex-1 overflow-y-auto p-4">
                 {dataLoading ? (
                   <p className="m-0 text-sm text-slate-500">Loading alerts...</p>
                 ) : alertGroups.length ? (
-                  alertGroups.map((group) => {
-                    const totalCount = 1 + group.rest.length;
-                    const sectionNumber = group.top.section_id
-                      ? sectionNumBySectionId.get(group.top.section_id)
-                      : undefined;
-                    const isExpanded = expandedGroups.includes(group.key);
-                    return (
-                      <div key={group.key} className="space-y-1">
-                        <article
-                          className={`rounded-lg border border-white/[0.08] bg-white/[0.035] p-3 ${flashingAlertIds.includes(group.top.id) ? 'ops-alert-flash' : ''
-                            }`}
-                        >
-                          <div className="mb-2 flex items-center justify-between gap-2">
-                            <span className={`rounded-full border px-2 py-1 text-[0.66rem] font-bold uppercase ${severityClasses(group.top.severity)}`}>
-                              {group.top.severity}
-                            </span>
-                            <time className="text-xs text-slate-500">{relativeTime(group.top.created_at)}</time>
-                          </div>
-                          <p className="m-0 text-sm leading-5 text-slate-200">{group.top.message}</p>
-                          <div className="mt-2 flex items-center gap-3">
-                            {sectionNumber && (
-                              <Link
-                                href={`/ops/3d?section=${sectionNumber}`}
-                                className="text-xs font-semibold text-indigo-400 transition hover:text-indigo-300"
-                              >
-                                View in 3D &rarr;
-                              </Link>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleResolveGroup(group.key)}
-                              className="flex items-center gap-1 text-xs font-semibold text-emerald-400 transition hover:text-emerald-300"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                              Resolve
-                            </button>
-                            {totalCount > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => toggleExpand(group.key)}
-                                className="ml-auto flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs font-semibold text-slate-400 transition hover:border-white/20 hover:text-slate-200"
-                              >
-                                &times;{totalCount}
-                                <svg
-                                  width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                  className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                >
-                                  <polyline points="6 9 12 15 18 9" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </article>
-                        {isExpanded && group.rest.map((alert) => {
-                          const restSectionNumber = alert.section_id
-                            ? sectionNumBySectionId.get(alert.section_id)
-                            : undefined;
-                          return (
-                            <article key={alert.id} className="rounded-lg border border-white/[0.05] bg-white/[0.015] p-2 pl-5">
-                              <div className="flex items-center justify-between gap-2">
-                                <time className="text-[0.6rem] text-slate-500">{relativeTime(alert.created_at)}</time>
-                                {restSectionNumber && (
-                                  <Link href={`/ops/3d?section=${restSectionNumber}`} className="text-[0.6rem] font-semibold text-indigo-400/70 hover:text-indigo-300">
-                                    View &rarr;
-                                  </Link>
+                  <div className="space-y-1">
+                    {alertGroups.map((group) => {
+                      const totalCount = 1 + group.rest.length;
+                      const isDupOpen = expandedGroups.includes(group.key);
+                      const severityColor = group.top.severity === 'high' ? '#ef4444' : group.top.severity === 'medium' ? '#f59e0b' : '#22c55e';
+                      const dotClass = group.top.severity === 'high' ? 'bg-red-500' : group.top.severity === 'medium' ? 'bg-amber-500' : 'bg-emerald-500';
+                      return (
+                        <div key={group.key}>
+                          <div
+                            className={`rounded-lg border-2 bg-white/[0.035] p-3 ${flashingAlertIds.includes(group.top.id) ? 'ops-alert-flash' : ''}`}
+                            style={{ borderColor: severityColor }}
+                          >
+                            {/* ── Header: dot + title + dismiss ── */}
+                            <div className="mb-3 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${dotClass}`} />
+                                {group.sectionNumber ? (
+                                  <span className="text-sm font-bold text-slate-100">Section {group.sectionNumber}</span>
+                                ) : (
+                                  <span className="text-xs text-slate-400 italic">Unknown section</span>
                                 )}
                               </div>
-                              <p className="m-0 mt-0.5 text-xs leading-4 text-slate-400">{alert.message}</p>
-                            </article>
-                          );
-                        })}
-                      </div>
-                    );
-                  })
+                              <button
+                                type="button"
+                                onClick={() => handleResolveGroup(group.key)}
+                                className="flex items-center justify-center rounded p-0.5 text-slate-500 transition hover:text-slate-300"
+                                aria-label="Dismiss"
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                              </button>
+                            </div>
+
+                            {/* ── Label-value rows ── */}
+                            <div className="space-y-1.5 text-sm">
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-500">Tier</span>
+                                <span className="font-semibold text-slate-100">{group.tier || '—'}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-500">Devices</span>
+                                <span className="font-semibold text-slate-100">{group.deviceCount}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-500">Status</span>
+                                <span className="font-bold uppercase" style={{ color: severityColor }}>
+                                  {group.top.severity}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-500">Updated</span>
+                                <span className="font-semibold text-slate-100">{relativeTime(group.top.created_at)}</span>
+                              </div>
+                            </div>
+
+                            {/* ── Divider + actions ── */}
+                            <div className="mt-3 flex items-center justify-between border-t border-white/[0.08] pt-2.5">
+                              {group.sectionNumber ? (
+                                <Link
+                                  href={`/ops/3d?section=${group.sectionNumber}`}
+                                  className="text-xs font-semibold text-indigo-400 transition hover:text-indigo-300"
+                                >
+                                  View in 3D &rarr;
+                                </Link>
+                              ) : <span />}
+                              <div className="flex items-center gap-2">
+                                {totalCount > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpand(group.key)}
+                                    className="flex items-center gap-0.5 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[0.55rem] font-semibold text-slate-400 transition hover:border-white/20 hover:text-slate-200"
+                                  >
+                                    &times;{totalCount}
+                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                                      className={`transition-transform ${isDupOpen ? 'rotate-180' : ''}`}
+                                    >
+                                      <polyline points="6 9 12 15 18 9" />
+                                    </svg>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleResolveGroup(group.key)}
+                                  className="flex items-center gap-1 text-xs font-semibold text-emerald-400 transition hover:text-emerald-300"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  Resolve
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* ── Older duplicate alerts ── */}
+                            {isDupOpen && group.rest.length > 0 && (
+                              <div className="mt-2 space-y-1 border-t border-white/[0.06] pt-2">
+                                {group.rest.map((alert) => (
+                                  <div key={alert.id} className="pl-4">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <time className="text-[0.55rem] text-slate-500">{relativeTime(alert.created_at)}</time>
+                                    </div>
+                                    <p className="m-0 mt-0.5 text-[0.65rem] leading-4 text-slate-400">{alert.message}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <div className="grid min-h-[260px] place-items-center rounded-md border border-dashed border-white/10 text-center text-sm text-slate-500">
                     No alerts yet.
