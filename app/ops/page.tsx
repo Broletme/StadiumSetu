@@ -620,6 +620,12 @@ export default function OpsDashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            <Link
+              href="/"
+              className="rounded-md border border-white/10 bg-transparent px-3 py-2 font-medium text-slate-400 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-slate-200"
+            >
+              &larr; Back to Home
+            </Link>
             <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2">Latest update: {latestUpdate}</span>
             <button
               type="button"
