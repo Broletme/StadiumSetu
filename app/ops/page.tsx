@@ -99,21 +99,75 @@ function StadiumLogo() {
 // ─── Section Card Grid ────────────────────────────────────────────────────────
 
 function SectionCard({ section }: { section: CongestionRow }) {
+  const [showDetail, setShowDetail] = useState(false);
+  const [posAbove, setPosAbove] = useState(true);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const showTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
   const dotColor =
     section.level === 'high' ? 'bg-red-500'
     : section.level === 'medium' ? 'bg-amber-500'
     : 'bg-emerald-500';
 
+  const borderColor =
+    section.level === 'high' ? 'border-red-500/30 bg-red-500/[0.08]'
+    : section.level === 'medium' ? 'border-amber-400/20 bg-amber-400/[0.05]'
+    : 'border-emerald-400/15 bg-emerald-500/[0.04]';
+
+  const pillColors =
+    section.level === 'high' ? 'border-red-400/[0.5] bg-red-500/[0.16] text-red-200'
+    : section.level === 'medium' ? 'border-amber-300/[0.5] bg-amber-400/[0.16] text-amber-100'
+    : 'border-emerald-400/[0.45] bg-emerald-500/[0.14] text-emerald-100';
+
+  const popoverBorder = section.level === 'high'
+    ? 'rgba(248,113,113,0.3)'
+    : section.level === 'medium'
+      ? 'rgba(251,191,36,0.25)'
+      : 'rgba(52,211,153,0.2)';
+
+  const popoverShadow = section.level === 'high'
+    ? 'rgba(239,68,68,0.3)'
+    : section.level === 'medium'
+      ? 'rgba(251,191,36,0.2)'
+      : 'rgba(52,211,153,0.15)';
+
+  function show() {
+    clearTimeout(hideTimerRef.current);
+    clearTimeout(showTimerRef.current);
+    showTimerRef.current = setTimeout(() => {
+      if (cardRef.current) {
+        const rect = cardRef.current.getBoundingClientRect();
+        setPosAbove(rect.top >= 180);
+      }
+      setShowDetail(true);
+    }, 100);
+  }
+
+  function scheduleHide() {
+    clearTimeout(showTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      setShowDetail(false);
+    }, 150);
+  }
+
+  function cancelHide() {
+    clearTimeout(hideTimerRef.current);
+  }
+
+  useEffect(() => () => {
+    clearTimeout(showTimerRef.current);
+    clearTimeout(hideTimerRef.current);
+  }, []);
+
   return (
     <div
+      ref={cardRef}
       className={`group relative rounded-md border p-2 ${
-        section.level === 'high'
-          ? 'border-red-500/30 bg-red-500/[0.08] ops-card-high'
-          : section.level === 'medium'
-            ? 'border-amber-400/20 bg-amber-400/[0.05]'
-            : 'border-emerald-400/15 bg-emerald-500/[0.04]'
-      }`}
-      title={`Devices: ${section.device_count} · Updated ${relativeTime(section.updated_at)}`}
+        section.level === 'high' && 'ops-card-high'
+      } ${borderColor}`}
+      onMouseEnter={show}
+      onMouseLeave={scheduleHide}
     >
       <div className="flex items-center justify-between">
         <span className={`inline-block h-2 w-2 rounded-full ${dotColor}`} />
@@ -131,6 +185,75 @@ function SectionCard({ section }: { section: CongestionRow }) {
       </div>
       <div className="mt-1 text-sm font-bold text-slate-100">{section.section_number}</div>
       <div className="text-[0.6rem] text-slate-500">{section.device_count} devices</div>
+
+      {/* ── Detail card popover ── */}
+      <div
+        className={`absolute z-50 transition-all duration-150 ${
+          posAbove ? 'bottom-full mb-2.5' : 'top-full mt-2.5'
+        } left-1/2 -translate-x-1/2 ${
+          showDetail ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+        }`}
+        style={{ transformOrigin: posAbove ? 'bottom center' : 'top center' }}
+        onMouseEnter={cancelHide}
+        onMouseLeave={scheduleHide}
+      >
+        {/* Arrow */}
+        <div className="absolute left-1/2 z-10 -translate-x-1/2" style={posAbove ? {
+          top: '100%', width: 0, height: 0,
+          borderLeft: '8px solid transparent',
+          borderRight: '8px solid transparent',
+          borderTop: '8px solid #0f172a',
+        } : {
+          bottom: '100%', width: 0, height: 0,
+          borderLeft: '8px solid transparent',
+          borderRight: '8px solid transparent',
+          borderBottom: '8px solid #0f172a',
+        }} />
+
+        {/* Panel */}
+        <div
+          className="w-56 rounded-lg border bg-[#0f172a] p-3 shadow-2xl"
+          style={{
+            borderColor: popoverBorder,
+            boxShadow: `0 16px 48px rgba(0,0,0,0.65), 0 0 0 1px ${popoverShadow}`,
+          }}
+        >
+          {/* Header: section number + status pill */}
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-lg font-bold text-slate-100">{section.section_number}</span>
+            <span className={`rounded-full border px-2.5 py-0.5 text-[0.65rem] font-bold uppercase ${pillColors}`}>
+              {section.level}
+            </span>
+          </div>
+
+          {/* Tier */}
+          <p className="m-0 text-xs font-medium text-slate-400">{section.tier}</p>
+
+          {/* Device count */}
+          <p className="m-0 mt-1 text-xs text-slate-400">
+            {section.device_count} device{section.device_count === 1 ? '' : 's'} detected
+          </p>
+
+          {/* Last updated */}
+          <p className="m-0 mt-0.5 text-xs text-slate-500">Updated {relativeTime(section.updated_at)}</p>
+
+          {/* Divider */}
+          <div className="my-2.5 border-t border-white/[0.08]" />
+
+          {/* View in 3D button */}
+          <Link
+            href={`/fan/3d?section=${section.section_number}`}
+            className="flex items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-indigo-400 transition hover:border-indigo-400/30 hover:bg-indigo-500/[0.12] hover:text-indigo-300"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+            View in 3D
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
