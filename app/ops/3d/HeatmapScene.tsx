@@ -564,6 +564,23 @@ function Pitch() {
   );
 }
 
+// ─── Goals ────────────────────────────────────────────────────────────────────
+
+function Goals() {
+  return (
+    <group>
+      <mesh position={[PITCH_LENGTH / 2 - 0.05, 0.15, 0]}>
+        <boxGeometry args={[0.1, 0.3, 0.9]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.5} />
+      </mesh>
+      <mesh position={[-PITCH_LENGTH / 2 + 0.05, 0.15, 0]}>
+        <boxGeometry args={[0.1, 0.3, 0.9]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
 // ─── Concourse ring ───────────────────────────────────────────────────────────
 
 function ConcourseRing() {
@@ -617,6 +634,38 @@ function GateMarker({ gate }: { gate: Gate }) {
   );
 }
 
+// ─── Floodlight Towers ───────────────────────────────────────────────────────
+
+const FLOODLIGHT_ANGLES = [45, 135, 225, 315];
+const FLOODLIGHT_POLE_HEIGHT = 8.0;
+const FLOODLIGHT_SCALE = CONCOURSE_OUTER_SCALE + 0.45;
+
+function FloodlightTowers() {
+  return (
+    <group>
+      {FLOODLIGHT_ANGLES.map((angleDeg) => {
+        const [px, pz] = bowlPosition(angleDeg, FLOODLIGHT_SCALE);
+        const baseY    = CONCOURSE_Y;
+        const topY     = baseY + FLOODLIGHT_POLE_HEIGHT;
+
+        return (
+          <group key={`flood-${angleDeg}`}>
+            <mesh position={[px, baseY + FLOODLIGHT_POLE_HEIGHT / 2, pz]}>
+              <cylinderGeometry args={[0.06, 0.08, FLOODLIGHT_POLE_HEIGHT, 8]} />
+              <meshStandardMaterial color="#4b5563" roughness={0.8} metalness={0.4} />
+            </mesh>
+            <mesh position={[px, topY + 0.1, pz]}>
+              <boxGeometry args={[0.7, 0.12, 0.4]} />
+              <meshStandardMaterial color="#fef9c3" emissive="#fde68a" emissiveIntensity={2.5} roughness={0.1} metalness={0.1} />
+            </mesh>
+            <pointLight position={[px, topY + 0.3, pz]} color="#fffbeb" intensity={8} distance={18} decay={2} />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 // ─── Tier labels ──────────────────────────────────────────────────────────────
 
 function TierLabels() {
@@ -644,51 +693,6 @@ function TierLabels() {
   );
 }
 
-// ─── Roof canopy ──────────────────────────────────────────────────────────────
-
-function RoofCanopy() {
-  const geo = useMemo(() => {
-    const segments = 64;
-    const innerScale = ROOF_SCALE - 0.20;
-    const outerScale = ROOF_SCALE + 0.45;
-    const innerY = 0.55;
-    const outerY = -0.20;
-    const thickness = 0.15;
-    const positions: number[] = [];
-    const indices: number[] = [];
-
-    for (let i = 0; i <= segments; i++) {
-      const deg = (i / segments) * 360;
-      const [ox, oz] = bowlPosition(deg, outerScale);
-      const [ix, iz] = bowlPosition(deg, innerScale);
-      positions.push(ox, outerY + thickness / 2, oz);
-      positions.push(ox, outerY - thickness / 2, oz);
-      positions.push(ix, innerY - thickness / 2, iz);
-      positions.push(ix, innerY + thickness / 2, iz);
-    }
-
-    for (let i = 0; i < segments; i++) {
-      const b = i * 4;
-      const n = (i + 1) * 4;
-      indices.push(b, n, n + 3, b, n + 3, b + 3);
-      indices.push(b + 1, b + 2, n + 2, b + 1, n + 2, n + 1);
-      indices.push(b, b + 1, n + 1, b, n + 1, n);
-      indices.push(b + 3, n + 3, n + 2, b + 3, n + 2, b + 2);
-    }
-
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    g.setIndex(indices);
-    g.computeVertexNormals();
-    return g;
-  }, []);
-
-  return (
-    <mesh geometry={geo} position={[0, ROOF_Y, 0]}>
-      <meshStandardMaterial color="#1e1b4b" roughness={0.5} metalness={0.6} transparent opacity={0.45} side={THREE.DoubleSide} />
-    </mesh>
-  );
-}
 
 // ─── Camera controller ────────────────────────────────────────────────────────
 
@@ -738,6 +742,7 @@ function Scene({
       <directionalLight position={[-8, 8, -6]} intensity={0.4} color="#b0c4ff" />
 
       <Pitch />
+      <Goals />
 
       {Array.from({ length: TOTAL_SECTIONS }, (_, i) => {
         const key = `lower-${i}`;
@@ -759,7 +764,7 @@ function Scene({
       <DispatchPaths sections={sections} gates={gates} />
 
       <ConcourseRing />
-      <RoofCanopy />
+      <FloodlightTowers />
       <TierLabels />
       {gates.map((gate) => (
         <GateMarker key={gate.id} gate={gate} />

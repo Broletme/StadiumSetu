@@ -552,69 +552,24 @@ function Pitch() {
   );
 }
 
-/**
- * Angled canopy ring — a partial cone / lofted ring that overhangs the upper
- * tier. Open in the centre like a real stadium roof. Built as a custom
- * BufferGeometry with inner/outer ellipses at different heights so it angles
- * downward toward the pitch.
- */
-function RoofCanopy() {
-  const geo = useMemo(() => {
-    const segments = 64;
-    const innerScale = ROOF_SCALE - 0.20;   // inner edge (closer to pitch, higher)
-    const outerScale = ROOF_SCALE + 0.45;   // outer edge (over upper tier, lower)
-    const innerY     = 0.55;                // height of inner lip above ROOF_Y
-    const outerY     = -0.20;               // outer lip drops below ROOF_Y (angled)
-    const thickness  = 0.15;                // vertical thickness of the canopy slab
+// ─── Goals ───────────────────────────────────────────────────────────────────
 
-    const positions: number[] = [];
-    const indices:   number[] = [];
-
-    // 4 verts per segment column:
-    //  0: outer-top   1: outer-bottom   2: inner-bottom   3: inner-top
-    for (let i = 0; i <= segments; i++) {
-      const deg = (i / segments) * 360;
-      const [ox, oz] = bowlPosition(deg, outerScale);
-      const [ix, iz] = bowlPosition(deg, innerScale);
-      positions.push(ox, outerY + thickness / 2, oz); // 0 outer-top
-      positions.push(ox, outerY - thickness / 2, oz); // 1 outer-bot
-      positions.push(ix, innerY - thickness / 2, iz); // 2 inner-bot
-      positions.push(ix, innerY + thickness / 2, iz); // 3 inner-top
-    }
-
-    for (let i = 0; i < segments; i++) {
-      const b = i * 4;
-      const n = (i + 1) * 4;
-      // top surface
-      indices.push(b, n, n + 3);  indices.push(b, n + 3, b + 3);
-      // bottom surface
-      indices.push(b + 1, b + 2, n + 2);  indices.push(b + 1, n + 2, n + 1);
-      // outer wall
-      indices.push(b, b + 1, n + 1);  indices.push(b, n + 1, n);
-      // inner wall
-      indices.push(b + 3, n + 3, n + 2);  indices.push(b + 3, n + 2, b + 2);
-    }
-
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    g.setIndex(indices);
-    g.computeVertexNormals();
-    return g;
-  }, []);
-
+function Goals() {
   return (
-    <mesh geometry={geo} position={[0, ROOF_Y, 0]}>
-      <meshStandardMaterial
-        color="#1e1b4b"
-        roughness={0.5}
-        metalness={0.6}
-        transparent
-        opacity={0.45}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
+    <group>
+      <mesh position={[PITCH_LENGTH / 2 - 0.05, 0.15, 0]}>
+        <boxGeometry args={[0.1, 0.3, 0.9]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.5} />
+      </mesh>
+      <mesh position={[-PITCH_LENGTH / 2 + 0.05, 0.15, 0]}>
+        <boxGeometry args={[0.1, 0.3, 0.9]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.5} />
+      </mesh>
+    </group>
   );
 }
+
+
 
 // ─── Floodlight Towers ───────────────────────────────────────────────────────
 
@@ -1006,8 +961,9 @@ function Scene({
         color="#b0c4ff"
       />
 
-      {/* ── Pitch / Field ────────────────────────────────────────────────── */}
+      {/* ── Central pitch ─────────────────────────────────────────────────── */}
       <Pitch />
+      <Goals />
 
       {/* ── Lower-tier wedges ────────────────────────────────────────────── */}
       {Array.from({ length: TOTAL_SECTIONS }, (_, i) => (
@@ -1041,7 +997,6 @@ function Scene({
       <ConcourseRing />
 
       {/* ── Angled roof canopy ────────────────────────────────────────────── */}
-      <RoofCanopy />
 
       {/* ── Tier labels ───────────────────────────────────────────────── */}
       <TierLabels />
