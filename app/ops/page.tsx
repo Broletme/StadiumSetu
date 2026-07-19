@@ -141,10 +141,6 @@ function buildWedgePath(idx: number, innerS: number, outerS: number): string {
   ].join(' ');
 }
 
-function wedgeFillColor(level: string): string {
-  return level === 'high' ? '#dc2626' : level === 'medium' ? '#d97706' : '#059669';
-}
-
 function levelGradientColor(level: string): string {
   return level === 'high' ? '#dc2626' : level === 'medium' ? '#b45309' : '#047857';
 }
@@ -163,6 +159,102 @@ function SectionHeatmapSVG({
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const [gates, setGates] = useState<Array<{ id: string; name: string; angle_deg: number }>>([]);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sectionsRef = useRef(sections);
+  sectionsRef.current = sections;
+
+  // ── Canvas glow layer ──────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const parent = canvas?.parentElement;
+    if (!canvas || !parent) return;
+
+    const resizeCanvas = () => {
+      const rect = parent.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+    };
+
+    resizeCanvas();
+    const ro = new ResizeObserver(resizeCanvas);
+    ro.observe(parent);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const period = 1400;
+    let frameId = 0;
+
+    const draw = (now: number) => {
+      const data = sectionsRef.current;
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.width;
+      const h = canvas.height;
+      const cssW = w / dpr;
+      const cssH = h / dpr;
+      const sx = (cssW / 500) * dpr;
+      const sy = (cssH / 500) * dpr;
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.setTransform(sx, 0, 0, sy, 0, 0);
+
+      const t = (now % period) / period;
+      const pulseFactor = 1 + 0.12 * Math.sin(t * 2 * Math.PI);
+      const intensityByCount = (count: number) => 0.6 + 0.4 * Math.min(count / 80, 1);
+
+      ctx.globalCompositeOperation = 'lighter';
+
+      for (const s of data) {
+        const centerDeg = (s.section_index / HEATMAP_TOTAL) * 360;
+        const isLower = s.tier.toLowerCase().includes('lower');
+        const innerS = isLower ? HEATMAP_LI : HEATMAP_UI;
+        const outerS = isLower ? HEATMAP_LO : HEATMAP_UO;
+        const [cx, cy] = heatmapPoint(centerDeg, (innerS + outerS) / 2);
+
+        let baseRadius: number, r: number, g: number, b: number, baseAlpha: number;
+        const pulse = s.level === 'high' ? pulseFactor : 1;
+
+        if (s.level === 'high') {
+          baseRadius = 32; r = 220; g = 38; b = 38; baseAlpha = 0.7;
+        } else if (s.level === 'medium') {
+          baseRadius = 24; r = 217; g = 119; b = 6; baseAlpha = 0.45;
+        } else {
+          baseRadius = 16; r = 5; g = 150; b = 105; baseAlpha = 0.2;
+        }
+
+        const radius = baseRadius * pulse;
+        const intensity = intensityByCount(s.device_count);
+        const alpha = baseAlpha * intensity * (s.level === 'high' ? (0.85 + 0.15 * pulseFactor) : 1);
+
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+        grad.addColorStop(0, `rgba(${r},${g},${b},${alpha})`);
+        grad.addColorStop(0.15, `rgba(${r},${g},${b},${alpha * 0.65})`);
+        grad.addColorStop(0.4, `rgba(${r},${g},${b},${alpha * 0.25})`);
+        grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 1.8, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+
+      frameId = requestAnimationFrame(draw);
+    };
+
+    frameId = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frameId);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,30 +318,25 @@ function SectionHeatmapSVG({
   ) =>
     Array.from({ length: HEATMAP_TOTAL }, (_, i) => {
       const row = sectionMap.get(i);
-      const level = row?.level ?? 'low';
       const d = buildWedgePath(i, innerS, outerS);
       const hi = hovered?.tier === tierKey && hovered?.index === i;
       return (
         <g key={`${tierKey}-${i}`}>
           <path
             d={d}
-            fill={wedgeFillColor(level)}
-            fillOpacity={hi ? 1 : 0.85}
-            stroke={hi ? '#f8fafc' : 'rgba(255,255,255,0.08)'}
-            strokeWidth={hi ? 1.5 : 0.4}
+            fill="rgba(255,255,255,0.02)"
+            stroke={hi ? '#f8fafc' : 'rgba(255,255,255,0.06)'}
+            strokeWidth={hi ? 1 : 0.3}
             style={{ cursor: row ? 'pointer' : 'default', transition: 'fill-opacity 0.15s' }}
             onMouseEnter={(e) => handleEnter(e, row, tierKey, i)}
             onMouseLeave={handleLeave}
           />
-          {level === 'high' && (
-            <path d={d} fill="none" stroke="#ef4444" strokeWidth={3} className="ops-wedge-pulse" />
-          )}
           <text
             x={heatmapPoint((i / HEATMAP_TOTAL) * 360, (innerS + outerS) / 2)[0]}
             y={heatmapPoint((i / HEATMAP_TOTAL) * 360, (innerS + outerS) / 2)[1]}
             textAnchor="middle" dominantBaseline="central"
-            fill={row ? '#f1f5f9' : 'rgba(255,255,255,0.15)'}
-            fontSize="6" fontFamily="monospace" fontWeight={600}
+            fill={row ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.08)'}
+            fontSize="6" fontFamily="monospace" fontWeight={500}
             style={{ pointerEvents: 'none', userSelect: 'none' }}
           >{row?.section_number ?? ''}</text>
         </g>
@@ -258,7 +345,20 @@ function SectionHeatmapSVG({
 
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.008] p-5 shadow-[0_0_0_1px_rgba(99,102,241,0.06),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-sm">
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.008] p-5 shadow-[0_0_0_1px_rgba(99,102,241,0.06),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-sm" style={{ position: 'relative' }}>
+        <canvas
+          ref={canvasRef}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 1,
+            borderRadius: 'inherit',
+          }}
+        />
         <svg
           viewBox="0 0 500 500"
           style={{ width: '100%', height: 'auto', display: 'block' }}
@@ -436,7 +536,7 @@ export default function OpsDashboardPage() {
       ])) as [CongestionRow[], AlertRow[]];
 
       setSections([...nextSections].sort(compareSections));
-      setAlerts(nextAlerts);
+      setAlerts(nextAlerts.filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load ops dashboard data.');
     } finally {
@@ -546,7 +646,11 @@ export default function OpsDashboardPage() {
             })
             .sort(compareSections),
         );
-        setAlerts((current) => [...result.newAlerts, ...current].slice(0, 30));
+        setAlerts((current) => {
+          const merged = [...result.newAlerts, ...current];
+          const seen = new Set<string>();
+          return merged.filter((a) => { const k = a.id; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 30);
+        });
       } else {
         await response.json().catch(() => null);
         fetchDashboardData();
@@ -590,18 +694,9 @@ export default function OpsDashboardPage() {
       suppressHydrationWarning
     >
       <style>{`
-        @keyframes opsHighPulse {
-          0%, 100% { box-shadow: 0 0 18px rgba(248, 113, 113, 0.2), inset 0 1px 0 rgba(255,255,255,0.06); }
-          50% { box-shadow: 0 0 34px rgba(248, 113, 113, 0.42), inset 0 1px 0 rgba(255,255,255,0.09); }
-        }
-
         @keyframes opsAlertFlash {
           0% { background: rgba(251, 191, 36, 0.2); border-color: rgba(251, 191, 36, 0.58); }
           100% { background: rgba(255, 255, 255, 0.035); border-color: rgba(255, 255, 255, 0.08); }
-        }
-
-        .ops-high-pulse {
-          animation: opsHighPulse 1.8s ease-in-out infinite;
         }
 
         .ops-alert-flash {
@@ -611,15 +706,6 @@ export default function OpsDashboardPage() {
         .ops-scrollbar {
           scrollbar-width: thin;
           scrollbar-color: rgba(148, 163, 184, 0.35) rgba(15, 23, 42, 0.5);
-        }
-
-        @keyframes opsWedgePulse {
-          0%, 100% { stroke-opacity: 0.1; }
-          50%      { stroke-opacity: 0.9; }
-        }
-        .ops-wedge-pulse {
-          animation: opsWedgePulse 1.4s ease-in-out infinite;
-          pointer-events: none;
         }
       `}</style>
 
