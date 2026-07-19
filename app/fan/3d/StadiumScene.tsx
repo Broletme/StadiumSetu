@@ -17,7 +17,7 @@ import {
   PITCH_LENGTH, PITCH_WIDTH,
   ROOF_SCALE, ROOF_Y,
   COLOR_LOWER_DEFAULT, COLOR_UPPER_DEFAULT, COLOR_HIGHLIGHTED,
-  COLOR_GATE, COLOR_PATH, COLOR_PITCH, COLOR_PITCH_LINES,
+  COLOR_GATE, COLOR_PATH, COLOR_PITCH,
   COLOR_CONCOURSE, COLOR_VOMITORY,
   bowlPosition, sectionAngleDeg,
 } from '@/lib/stadiumGeometry';
@@ -523,21 +523,30 @@ function Pitch() {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <ringGeometry args={[0.55, 0.6, 32]} />
         <meshStandardMaterial
-          color={COLOR_PITCH_LINES}
-          roughness={0.7}
+          color="#4ade80"
+          roughness={0.6}
           transparent
-          opacity={0.5}
+          opacity={0.7}
         />
       </mesh>
       {/* Centre line */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-        <planeGeometry args={[0.04, PITCH_WIDTH * 0.92]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.018, 0]}>
+        <planeGeometry args={[0.05, PITCH_WIDTH * 0.88]} />
         <meshStandardMaterial
-          color={COLOR_PITCH_LINES}
-          roughness={0.7}
+          color="#4ade80"
+          roughness={0.6}
           transparent
-          opacity={0.5}
+          opacity={0.7}
         />
+      </mesh>
+      {/* Penalty-area lines */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[PITCH_LENGTH * 0.3, 0.018, 0]}>
+        <planeGeometry args={[0.04, PITCH_WIDTH * 0.44]} />
+        <meshStandardMaterial color="#4ade80" roughness={0.6} transparent opacity={0.35} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-PITCH_LENGTH * 0.3, 0.018, 0]}>
+        <planeGeometry args={[0.04, PITCH_WIDTH * 0.44]} />
+        <meshStandardMaterial color="#4ade80" roughness={0.6} transparent opacity={0.35} />
       </mesh>
     </group>
   );
@@ -983,17 +992,17 @@ function Scene({
   return (
     <>
       {/* ── Lighting ─────────────────────────────────────────────────────── */}
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={0.5} />
       <directionalLight
         position={[10, 15, 8]}
-        intensity={1.6}
+        intensity={1.8}
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
       />
       <directionalLight
         position={[-8, 8, -6]}
-        intensity={0.35}
+        intensity={0.4}
         color="#b0c4ff"
       />
 
@@ -1028,19 +1037,11 @@ function Scene({
         />
       ))}
 
-      {/* ── Vomitory openings (tunnel entrances for all 24 sections) ─────── */}
-      {Array.from({ length: TOTAL_SECTIONS }, (_, i) => (
-        <Vomitory key={`vom-${i}`} sectionIndex={i} />
-      ))}
-
       {/* ── Elliptical concourse ring ────────────────────────────────────── */}
       <ConcourseRing />
 
-      {/* ── Angled roof canopy (removed by request) ───────────────────────── */}
-      {/* <RoofCanopy /> */}
-
-      {/* ── Floodlight towers ─────────────────────────────────────────── */}
-      <FloodlightTowers />
+      {/* ── Angled roof canopy ────────────────────────────────────────────── */}
+      <RoofCanopy />
 
       {/* ── Tier labels ───────────────────────────────────────────────── */}
       <TierLabels />
