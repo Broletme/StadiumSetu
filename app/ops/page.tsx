@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
@@ -95,212 +96,60 @@ function StadiumLogo() {
   );
 }
 
-// ─── SVG Section Heatmap ─────────────────────────────────────────────────────
+// ─── Section Card Grid ────────────────────────────────────────────────────────
 
-type HoverInfo = { tier: 'lower' | 'upper'; index: number } | null;
-
-const HEATMAP_CX = 250;
-const HEATMAP_CY = 250;
-const HEATMAP_BRX = 7;
-const HEATMAP_BRZ = 5;
-const HEATMAP_PX = 25;
-const HEATMAP_TOTAL = 24;
-const HEATMAP_GAP = 0.46;
-const HEATMAP_HALF = (360 / HEATMAP_TOTAL) * HEATMAP_GAP;
-const HEATMAP_LI = 0.50;
-const HEATMAP_LO = 0.86;
-const HEATMAP_UI = 0.93;
-const HEATMAP_UO = 1.29;
-
-function heatmapPoint(angleDeg: number, scale: number): [number, number] {
-  const rad = (angleDeg * Math.PI) / 180;
-  return [
-    HEATMAP_CX + Math.cos(rad) * HEATMAP_BRX * scale * HEATMAP_PX,
-    HEATMAP_CY + Math.sin(rad) * HEATMAP_BRZ * scale * HEATMAP_PX,
-  ];
+function SectionCard({ section }: { section: CongestionRow }) {
+  return (
+    <div
+      className={`rounded-lg border p-3 ${
+        section.level === 'high'
+          ? 'border-red-500/30 bg-red-500/[0.08] ops-card-high'
+          : section.level === 'medium'
+            ? 'border-amber-400/25 bg-amber-400/[0.06]'
+            : 'border-emerald-400/20 bg-emerald-500/[0.05]'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-slate-500">Section</span>
+        <span className={`rounded-full border px-2 py-0.5 text-[0.6rem] font-bold uppercase ${severityClasses(section.level)}`}>
+          {section.level}
+        </span>
+      </div>
+      <div className="mt-1 text-lg font-bold text-slate-100">{section.section_number}</div>
+      <div className="mt-2 text-xs text-slate-400">
+        Devices: <strong className="text-slate-300">{section.device_count}</strong>
+      </div>
+      <div className="mt-0.5 text-[0.65rem] text-slate-500">
+        {relativeTime(section.updated_at)}
+      </div>
+      <div className="mt-2">
+        <Link
+          href={`/fan/3d?section=${section.section_number}`}
+          className="text-[0.65rem] font-semibold text-indigo-400 transition hover:text-indigo-300"
+        >
+          View in 3D &rarr;
+        </Link>
+      </div>
+    </div>
+  );
 }
 
-function buildWedgePath(idx: number, innerS: number, outerS: number): string {
-  const centerDeg = (idx / HEATMAP_TOTAL) * 360;
-  const sDeg = centerDeg - HEATMAP_HALF;
-  const eDeg = centerDeg + HEATMAP_HALF;
-  const [osx, osy] = heatmapPoint(sDeg, outerS);
-  const [oex, oey] = heatmapPoint(eDeg, outerS);
-  const [isx, isy] = heatmapPoint(sDeg, innerS);
-  const [iex, iey] = heatmapPoint(eDeg, innerS);
-  const orx = HEATMAP_BRX * outerS * HEATMAP_PX;
-  const ory = HEATMAP_BRZ * outerS * HEATMAP_PX;
-  const irx = HEATMAP_BRX * innerS * HEATMAP_PX;
-  const iry = HEATMAP_BRZ * innerS * HEATMAP_PX;
-  return [
-    `M ${osx} ${osy}`,
-    `A ${orx} ${ory} 0 0 1 ${oex} ${oey}`,
-    `L ${iex} ${iey}`,
-    `A ${irx} ${iry} 0 0 0 ${isx} ${isy}`,
-    'Z',
-  ].join(' ');
-}
-
-function levelGradientColor(level: string): string {
-  return level === 'high' ? '#dc2626' : level === 'medium' ? '#b45309' : '#047857';
-}
-
-const GATE_MARKER_SCALE = HEATMAP_UO + 0.04;
-
-function SectionHeatmapSVG({
+function SectionGrid({
   sections,
   dataLoading,
 }: {
   sections: CongestionRow[];
   dataLoading: boolean;
 }) {
-  const [hovered, setHovered] = useState<HoverInfo>(null);
-  const [tooltipRow, setTooltipRow] = useState<CongestionRow | null>(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [gates, setGates] = useState<Array<{ id: string; name: string; angle_deg: number }>>([]);
+  const lowerTier = useMemo(
+    () => sections.filter((s) => s.tier.toLowerCase().includes('lower')),
+    [sections],
+  );
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sectionsRef = useRef(sections);
-  sectionsRef.current = sections;
-
-  // ── Canvas glow layer ──────────────────────────────────────────────────────
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const parent = canvas?.parentElement;
-    if (!canvas || !parent) return;
-
-    const resizeCanvas = () => {
-      const rect = parent.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-    };
-
-    resizeCanvas();
-    const ro = new ResizeObserver(resizeCanvas);
-    ro.observe(parent);
-    return () => ro.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const period = 1400;
-    let frameId = 0;
-
-    const draw = (now: number) => {
-      const data = sectionsRef.current;
-      const dpr = window.devicePixelRatio || 1;
-      const w = canvas.width;
-      const h = canvas.height;
-      const cssW = w / dpr;
-      const cssH = h / dpr;
-      const sx = (cssW / 500) * dpr;
-      const sy = (cssH / 500) * dpr;
-
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-
-      ctx.setTransform(sx, 0, 0, sy, 0, 0);
-
-      const t = (now % period) / period;
-      const pulseFactor = 1 + 0.12 * Math.sin(t * 2 * Math.PI);
-      const intensityByCount = (count: number) => 0.6 + 0.4 * Math.min(count / 80, 1);
-
-      ctx.globalCompositeOperation = 'lighter';
-
-      for (const s of data) {
-        const centerDeg = (s.section_index / HEATMAP_TOTAL) * 360;
-        const isLower = s.tier.toLowerCase().includes('lower');
-        const innerS = isLower ? HEATMAP_LI : HEATMAP_UI;
-        const outerS = isLower ? HEATMAP_LO : HEATMAP_UO;
-        const [cx, cy] = heatmapPoint(centerDeg, (innerS + outerS) / 2);
-
-        let baseRadius: number, r: number, g: number, b: number, baseAlpha: number;
-        const pulse = s.level === 'high' ? pulseFactor : 1;
-
-        if (s.level === 'high') {
-          baseRadius = 32; r = 220; g = 38; b = 38; baseAlpha = 0.7;
-        } else if (s.level === 'medium') {
-          baseRadius = 24; r = 217; g = 119; b = 6; baseAlpha = 0.45;
-        } else {
-          baseRadius = 16; r = 5; g = 150; b = 105; baseAlpha = 0.2;
-        }
-
-        const radius = baseRadius * pulse;
-        const intensity = intensityByCount(s.device_count);
-        const alpha = baseAlpha * intensity * (s.level === 'high' ? (0.85 + 0.15 * pulseFactor) : 1);
-
-        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-        grad.addColorStop(0, `rgba(${r},${g},${b},${alpha})`);
-        grad.addColorStop(0.15, `rgba(${r},${g},${b},${alpha * 0.65})`);
-        grad.addColorStop(0.4, `rgba(${r},${g},${b},${alpha * 0.25})`);
-        grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius * 1.8, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
-        ctx.fill();
-      }
-
-      frameId = requestAnimationFrame(draw);
-    };
-
-    frameId = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frameId);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchGates = async () => {
-      try {
-        const supabase = getSupabaseBrowserClient();
-        const { data, error } = await supabase
-          .from('gates')
-          .select('id, name, angle_deg')
-          .order('name', { ascending: true });
-        if (!cancelled && data && !error) setGates(data);
-      } catch {}
-    };
-    fetchGates();
-    return () => { cancelled = true; };
-  }, []);
-
-  const lowerMap = useMemo(() => {
-    const m = new Map<number, CongestionRow>();
-    sections.forEach((s) => { if (s.tier.toLowerCase().includes('lower')) m.set(s.section_index, s); });
-    return m;
-  }, [sections]);
-
-  const upperMap = useMemo(() => {
-    const m = new Map<number, CongestionRow>();
-    sections.forEach((s) => { if (!s.tier.toLowerCase().includes('lower')) m.set(s.section_index, s); });
-    return m;
-  }, [sections]);
-
-  const handleEnter = (e: React.MouseEvent, row: CongestionRow | undefined, tier: 'lower' | 'upper', idx: number) => {
-    if (!row) return;
-    setHovered({ tier, index: idx });
-    setTooltipRow(row);
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-    }
-  };
-
-  const handleLeave = () => { setHovered(null); setTooltipRow(null); };
-
-  const handleMove = (e: React.MouseEvent) => {
-    if (!tooltipRow || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setTooltipPos({ x: e.clientX - rect.left + 14, y: e.clientY - rect.top - 12 });
-  };
+  const upperTier = useMemo(
+    () => sections.filter((s) => !s.tier.toLowerCase().includes('lower')),
+    [sections],
+  );
 
   if (dataLoading) {
     return (
@@ -310,191 +159,50 @@ function SectionHeatmapSVG({
     );
   }
 
-  const renderWedges = (
-    tierKey: 'lower' | 'upper',
-    sectionMap: Map<number, CongestionRow>,
-    innerS: number,
-    outerS: number,
-  ) =>
-    Array.from({ length: HEATMAP_TOTAL }, (_, i) => {
-      const row = sectionMap.get(i);
-      const d = buildWedgePath(i, innerS, outerS);
-      const hi = hovered?.tier === tierKey && hovered?.index === i;
-      return (
-        <g key={`${tierKey}-${i}`}>
-          <path
-            d={d}
-            fill="rgba(255,255,255,0.02)"
-            stroke={hi ? '#f8fafc' : 'rgba(255,255,255,0.06)'}
-            strokeWidth={hi ? 1 : 0.3}
-            style={{ cursor: row ? 'pointer' : 'default', transition: 'fill-opacity 0.15s' }}
-            onMouseEnter={(e) => handleEnter(e, row, tierKey, i)}
-            onMouseLeave={handleLeave}
-          />
-          <text
-            x={heatmapPoint((i / HEATMAP_TOTAL) * 360, (innerS + outerS) / 2)[0]}
-            y={heatmapPoint((i / HEATMAP_TOTAL) * 360, (innerS + outerS) / 2)[1]}
-            textAnchor="middle" dominantBaseline="central"
-            fill={row ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.08)'}
-            fontSize="6" fontFamily="monospace" fontWeight={500}
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >{row?.section_number ?? ''}</text>
-        </g>
-      );
-    });
-
   return (
-    <div ref={containerRef} style={{ position: 'relative' }}>
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.008] p-5 shadow-[0_0_0_1px_rgba(99,102,241,0.06),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-sm" style={{ position: 'relative' }}>
-        <canvas
-          ref={canvasRef}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            zIndex: 1,
-            borderRadius: 'inherit',
-          }}
-        />
-        <svg
-          viewBox="0 0 500 500"
-          style={{ width: '100%', height: 'auto', display: 'block' }}
-          onMouseMove={handleMove}
-        >
-          <defs>
-            <filter id="pitch-shadow" x="-10%" y="-10%" width="120%" height="120%">
-              <feDropShadow dx="0" dy="2.5" stdDeviation="4" floodColor="#000" floodOpacity="0.5" />
-            </filter>
-          </defs>
-
-          {/* ── Pitch ──────────────────────────────────────────────────────── */}
-          <g filter="url(#pitch-shadow)">
-            <rect x={HEATMAP_CX - 36} y={HEATMAP_CY - 24} width={72} height={48} fill="#166534" rx={3} stroke="#22c55e" strokeWidth={0.8} strokeOpacity={0.4} />
-            {/* Halfway line */}
-            <line x1={HEATMAP_CX} y1={HEATMAP_CY - 22} x2={HEATMAP_CX} y2={HEATMAP_CY + 22} stroke="#22c55e" strokeWidth={0.5} strokeOpacity={0.35} />
-            {/* Center circle */}
-            <circle cx={HEATMAP_CX} cy={HEATMAP_CY} r={9} fill="none" stroke="#22c55e" strokeWidth={0.5} strokeOpacity={0.35} />
-            {/* Center spot */}
-            <circle cx={HEATMAP_CX} cy={HEATMAP_CY} r={1.2} fill="rgba(34,197,94,0.3)" />
-          </g>
-          <text
-            x={HEATMAP_CX} y={HEATMAP_CY + 33}
-            textAnchor="middle" fill="rgba(255,255,255,0.15)" fontSize="6.5" fontFamily="monospace" fontWeight={500}
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >PITCH</text>
-
-          {/* ── Lower Tier wedges ──────────────────────────────────────────── */}
-          {renderWedges('lower', lowerMap, HEATMAP_LI, HEATMAP_LO)}
-
-          {/* ── Upper Tier wedges ──────────────────────────────────────────── */}
-          {renderWedges('upper', upperMap, HEATMAP_UI, HEATMAP_UO)}
-
-          {/* ── Gate markers ──────────────────────────────────────────────── */}
-          {gates.map((gate) => {
-            const [mx, my] = heatmapPoint(gate.angle_deg, GATE_MARKER_SCALE);
-            const label = gate.name.startsWith('Gate ') ? gate.name : `Gate ${gate.name}`;
-            const pillW = Math.max(label.length * 5 + 10, 28);
-            const pillH = 14;
-            return (
-              <g key={gate.id}>
-                {/* Pill badge */}
-                <rect
-                  x={mx - pillW / 2} y={my - pillH / 2}
-                  width={pillW} height={pillH} rx={pillH / 2}
-                  fill="rgba(15,23,42,0.85)"
-                  stroke="rgba(245,158,11,0.5)"
-                  strokeWidth={1}
-                />
-                {/* Pill badge text */}
-                <text
-                  x={mx} y={my + 1}
-                  textAnchor="middle" dominantBaseline="central"
-                  fill="#fbbf24" fontSize="7.5" fontFamily="sans-serif" fontWeight={700}
-                  style={{ pointerEvents: 'none', userSelect: 'none' }}
-                >{label}</text>
-              </g>
-            );
-          })}
-
-          {/* ── Tier labels ────────────────────────────────────────────────── */}
-          {/* Lower tier label — below the ring (angle 90°) */}
-          <g>
-            <text
-              x={heatmapPoint(90, (HEATMAP_LI + HEATMAP_LO) / 2)[0]}
-              y={heatmapPoint(90, HEATMAP_LO + 0.35)[1]}
-              textAnchor="middle" dominantBaseline="central"
-              fill="rgba(148,163,184,0.7)" fontSize="8" fontFamily="sans-serif" fontWeight={700}
-              letterSpacing="0.2em"
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
-            >LOWER TIER</text>
-          </g>
-          {/* Upper tier label — above the ring (angle 270°) */}
-          <g>
-            <text
-              x={heatmapPoint(270, (HEATMAP_UI + HEATMAP_UO) / 2)[0]}
-              y={heatmapPoint(270, HEATMAP_UO + 0.35)[1]}
-              textAnchor="middle" dominantBaseline="central"
-              fill="rgba(148,163,184,0.7)" fontSize="8" fontFamily="sans-serif" fontWeight={700}
-              letterSpacing="0.2em"
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
-            >UPPER TIER</text>
-          </g>
-
-          {/* ── Legend ─────────────────────────────────────────────────────── */}
-          <g transform="translate(385, 390)">
-            {/* Panel bg */}
-            <rect x={0} y={0} width={92} height={76} rx={8} fill="rgba(15,23,42,0.8)" stroke="rgba(255,255,255,0.08)" strokeWidth={0.8} />
-            <text x={46} y={16} textAnchor="middle" fill="#94a3b8" fontSize="7" fontFamily="sans-serif" fontWeight={600} letterSpacing="0.1em">LEGEND</text>
-            {/* Low */}
-            <circle cx={16} cy={34} r={5} fill="#059669" />
-            <text x={28} y={35} fill="#cbd5e1" fontSize="7.5" fontFamily="sans-serif">Low</text>
-            {/* Medium */}
-            <circle cx={16} cy={50} r={5} fill="#d97706" />
-            <text x={28} y={51} fill="#cbd5e1" fontSize="7.5" fontFamily="sans-serif">Medium</text>
-            {/* High */}
-            <circle cx={16} cy={66} r={5} fill="#dc2626" />
-            <text x={28} y={67} fill="#cbd5e1" fontSize="7.5" fontFamily="sans-serif">High</text>
-          </g>
-        </svg>
-
-        {/* Tooltip */}
-        {tooltipRow && (
-          <div
-            style={{
-              position: 'absolute',
-              left: tooltipPos.x,
-              top: tooltipPos.y,
-              transform: 'translate(-50%, -100%)',
-              background: 'rgba(15,23,42,0.95)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: '8px',
-              padding: '0.5rem 0.75rem',
-              fontSize: '0.78rem',
-              color: '#e2e8f0',
-              pointerEvents: 'none',
-              whiteSpace: 'nowrap',
-              zIndex: 50,
-              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-            }}
-          >
-            <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>
-              Section {tooltipRow.section_number} &middot; {tooltipRow.tier}
-            </div>
-            <div style={{ color: '#94a3b8' }}>
-              Devices: <strong>{tooltipRow.device_count}</strong> &middot;{' '}
-              <span style={{ color: levelGradientColor(tooltipRow.level), fontWeight: 600, textTransform: 'uppercase' }}>
-                {tooltipRow.level}
-              </span>
-            </div>
-            <div style={{ color: '#64748b', fontSize: '0.7rem', marginTop: '0.15rem' }}>
-              Updated: {relativeTime(tooltipRow.updated_at)}
-            </div>
-          </div>
-        )}
+    <div className="space-y-6">
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+        <span className="mr-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-slate-500">Legend</span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          Low
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" />
+          Medium
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+          High
+        </span>
       </div>
+
+      {/* Lower Tier */}
+      <div>
+        <h3 className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em] text-slate-500">
+          Lower Tier
+        </h3>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+          {lowerTier.map((s) => (
+            <SectionCard key={s.section_id} section={s} />
+          ))}
+        </div>
+      </div>
+
+      {/* Upper Tier */}
+      {upperTier.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em] text-slate-500">
+            Upper Tier
+          </h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+            {upperTier.map((s) => (
+              <SectionCard key={s.section_id} section={s} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -662,6 +370,12 @@ export default function OpsDashboardPage() {
     }
   }
 
+  const sectionNumBySectionId = useMemo(() => {
+    const m = new Map<string, string>();
+    sections.forEach((s) => m.set(s.section_id, s.section_number));
+    return m;
+  }, [sections]);
+
   const statusCounts = useMemo(
     () =>
       sections.reduce(
@@ -694,6 +408,14 @@ export default function OpsDashboardPage() {
       suppressHydrationWarning
     >
       <style>{`
+        @keyframes opsCardHighPulse {
+          0%, 100% { box-shadow: 0 0 12px rgba(248, 113, 113, 0.15), 0 0 0 1px rgba(239, 68, 68, 0.3); }
+          50%      { box-shadow: 0 0 24px rgba(248, 113, 113, 0.35), 0 0 0 1px rgba(239, 68, 68, 0.7); }
+        }
+        .ops-card-high {
+          animation: opsCardHighPulse 1.8s ease-in-out infinite;
+        }
+
         @keyframes opsAlertFlash {
           0% { background: rgba(251, 191, 36, 0.2); border-color: rgba(251, 191, 36, 0.58); }
           100% { background: rgba(255, 255, 255, 0.035); border-color: rgba(255, 255, 255, 0.08); }
@@ -761,7 +483,7 @@ export default function OpsDashboardPage() {
               </div>
             )}
 
-            <SectionHeatmapSVG sections={sections} dataLoading={dataLoading} />
+            <SectionGrid sections={sections} dataLoading={dataLoading} />
           </div>
 
           <aside className="flex flex-col gap-4">
@@ -801,7 +523,9 @@ export default function OpsDashboardPage() {
                 {dataLoading ? (
                   <p className="m-0 text-sm text-slate-500">Loading alerts...</p>
                 ) : alerts.length ? (
-                  alerts.map((alert) => (
+                  alerts.map((alert) => {
+                    const sectionNumber = alert.section_id ? sectionNumBySectionId.get(alert.section_id) : undefined;
+                    return (
                     <article
                       key={alert.id}
                       className={`rounded-lg border border-white/[0.08] bg-white/[0.035] p-3 ${
@@ -815,9 +539,20 @@ export default function OpsDashboardPage() {
                         <time className="text-xs text-slate-500">{relativeTime(alert.created_at)}</time>
                       </div>
                       <p className="m-0 text-sm leading-5 text-slate-200">{alert.message}</p>
-                      {alert.resolved && <p className="m-0 mt-2 text-xs font-semibold text-emerald-300">Resolved</p>}
+                      <div className="mt-2 flex items-center gap-3">
+                        {sectionNumber && (
+                          <Link
+                            href={`/fan/3d?section=${sectionNumber}`}
+                            className="text-xs font-semibold text-indigo-400 transition hover:text-indigo-300"
+                          >
+                            View in 3D &rarr;
+                          </Link>
+                        )}
+                        {alert.resolved && <span className="text-xs font-semibold text-emerald-300">Resolved</span>}
+                      </div>
                     </article>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="grid min-h-[260px] place-items-center rounded-md border border-dashed border-white/10 text-center text-sm text-slate-500">
                     No alerts yet.
