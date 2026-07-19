@@ -685,12 +685,25 @@ function CameraController({ target }: { target: THREE.Vector3 | null }) {
   const controlsRef = useRef<any>(null);
   const hasAnimated = useRef(false);
 
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (controls) {
+      const handleInteract = () => {
+        hasAnimated.current = true;
+      };
+      controls.addEventListener('start', handleInteract);
+      return () => {
+        controls.removeEventListener('start', handleInteract);
+      };
+    }
+  }, []);
+
   useFrame((_state, delta) => {
     if (!target || hasAnimated.current) return;
     const offset = new THREE.Vector3(target.x * 0.5 + 2, target.y + 7, target.z + 9);
-    camera.position.lerp(offset, delta * 2);
+    camera.position.lerp(offset, delta * 8);
     if (controlsRef.current) {
-      controlsRef.current.target.lerp(target, delta * 2);
+      controlsRef.current.target.lerp(target, delta * 8);
       controlsRef.current.update();
     }
     if (camera.position.distanceTo(offset) < 0.15) {
