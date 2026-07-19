@@ -378,10 +378,12 @@ function WedgeBase({
   sectionIndex,
   isLower,
   level,
+  isHighlighted,
 }: {
   sectionIndex: number;
   isLower: boolean;
   level: CongestionLevel;
+  isHighlighted?: boolean;
 }) {
   const innerScale = isLower ? LOWER_INNER_SCALE : UPPER_INNER_SCALE;
   const outerScale = isLower ? LOWER_OUTER_SCALE : UPPER_OUTER_SCALE;
@@ -395,9 +397,24 @@ function WedgeBase({
 
   const color = LEVEL_COLORS[level];
   return (
-    <mesh geometry={geo} position={[0, y + depth, 0]} castShadow receiveShadow>
-      <meshStandardMaterial color={color} roughness={0.6} metalness={0.15} transparent opacity={0.18} />
-    </mesh>
+    <group>
+      <mesh geometry={geo} position={[0, y + depth, 0]} castShadow receiveShadow>
+        <meshStandardMaterial
+          color={color}
+          roughness={0.6}
+          metalness={0.15}
+          transparent
+          opacity={isHighlighted ? 0.35 : 0.18}
+          emissive={isHighlighted ? color : undefined}
+          emissiveIntensity={isHighlighted ? 0.6 : 0}
+        />
+      </mesh>
+      {isHighlighted && (
+        <mesh geometry={geo} position={[0, y + depth, 0]}>
+          <meshBasicMaterial color="#818cf8" transparent opacity={0.12} side={THREE.BackSide} />
+        </mesh>
+      )}
+    </group>
   );
 }
 
@@ -407,10 +424,12 @@ function SeatRows({
   sectionIndex,
   isLower,
   level,
+  isHighlighted,
 }: {
   sectionIndex: number;
   isLower: boolean;
   level: CongestionLevel;
+  isHighlighted?: boolean;
 }) {
   const innerScale = isLower ? LOWER_INNER_SCALE : UPPER_INNER_SCALE;
   const outerScale = isLower ? LOWER_OUTER_SCALE : UPPER_OUTER_SCALE;
@@ -480,7 +499,7 @@ function SeatRows({
     roughness: 0.55,
     metalness: 0.2,
     emissive: baseColor,
-    emissiveIntensity: level === 'high' ? 0.4 : level === 'medium' ? 0.18 : 0.06,
+    emissiveIntensity: isHighlighted ? 1.2 : (level === 'high' ? 0.4 : level === 'medium' ? 0.18 : 0.06),
   };
 
   return (
@@ -501,24 +520,17 @@ function Section({
   sectionIndex,
   isLower,
   level,
-  sectionData,
-  onSectionSelect,
+  isHighlighted,
 }: {
   sectionIndex: number;
   isLower: boolean;
   level: CongestionLevel;
-  sectionData: CongestionRow | null;
-  onSectionSelect: ((s: CongestionRow) => void) | undefined;
+  isHighlighted?: boolean;
 }) {
   return (
-    <group
-      onClick={(e) => {
-        e.stopPropagation();
-        if (sectionData && onSectionSelect) onSectionSelect(sectionData);
-      }}
-    >
-      <WedgeBase sectionIndex={sectionIndex} isLower={isLower} level={level} />
-      <SeatRows sectionIndex={sectionIndex} isLower={isLower} level={level} />
+    <group>
+      <WedgeBase sectionIndex={sectionIndex} isLower={isLower} level={level} isHighlighted={isHighlighted} />
+      <SeatRows sectionIndex={sectionIndex} isLower={isLower} level={level} isHighlighted={isHighlighted} />
     </group>
   );
 }
@@ -684,6 +696,13 @@ function CameraController({ target }: { target: THREE.Vector3 | null }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const hasAnimated = useRef(false);
+  const prevTargetKey = useRef<string | null>(null);
+
+  const targetKey = target ? `${target.x.toFixed(2)},${target.y.toFixed(2)},${target.z.toFixed(2)}` : null;
+  if (targetKey !== prevTargetKey.current) {
+    hasAnimated.current = false;
+    prevTargetKey.current = targetKey;
+  }
 
   useEffect(() => {
     const controls = controlsRef.current;
@@ -701,9 +720,9 @@ function CameraController({ target }: { target: THREE.Vector3 | null }) {
   useFrame((_state, delta) => {
     if (!target || hasAnimated.current) return;
     const offset = new THREE.Vector3(target.x * 0.5 + 2, target.y + 7, target.z + 9);
-    camera.position.lerp(offset, delta * 8);
+    camera.position.lerp(offset, delta * 4);
     if (controlsRef.current) {
-      controlsRef.current.target.lerp(target, delta * 8);
+      controlsRef.current.target.lerp(target, delta * 4);
       controlsRef.current.update();
     }
     if (camera.position.distanceTo(offset) < 0.15) {
@@ -729,12 +748,10 @@ function Scene({
   sections,
   gates,
   focusSectionNumber,
-  onSectionSelect,
 }: {
   sections: CongestionRow[];
   gates: Gate[];
   focusSectionNumber?: string;
-  onSectionSelect: ((s: CongestionRow) => void) | undefined;
 }) {
   const sectionMap = useMemo(() => {
     const m = new Map<string, CongestionLevel>();
@@ -745,14 +762,12 @@ function Scene({
     return m;
   }, [sections]);
 
-  const sectionDataMap = useMemo(() => {
-    const m = new Map<string, CongestionRow>();
-    sections.forEach((s) => {
-      const key = `${s.tier.toLowerCase().includes('lower') ? 'lower' : 'upper'}-${s.section_index}`;
-      m.set(key, s);
-    });
-    return m;
-  }, [sections]);
+  const highlightedKey = useMemo(() => {
+    if (!focusSectionNumber) return null;
+    const section = sections.find((s) => s.section_number === focusSectionNumber);
+    if (!section) return null;
+    return `${section.tier.toLowerCase().includes('lower') ? 'lower' : 'upper'}-${section.section_index}`;
+  }, [focusSectionNumber, sections]);
 
   const focusTarget = useMemo(() => {
     if (!focusSectionNumber) return null;
@@ -781,8 +796,7 @@ function Scene({
         const key = `lower-${i}`;
         return (
           <Section key={key} sectionIndex={i} isLower level={sectionMap.get(key) ?? 'low'}
-            sectionData={sectionDataMap.get(key) ?? null}
-            onSectionSelect={onSectionSelect}
+            isHighlighted={key === highlightedKey}
           />
         );
       })}
@@ -790,8 +804,7 @@ function Scene({
         const key = `upper-${i}`;
         return (
           <Section key={key} sectionIndex={i} isLower={false} level={sectionMap.get(key) ?? 'low'}
-            sectionData={sectionDataMap.get(key) ?? null}
-            onSectionSelect={onSectionSelect}
+            isHighlighted={key === highlightedKey}
           />
         );
       })}
@@ -815,25 +828,21 @@ export default function HeatmapScene({
   sections,
   gates,
   focusSectionNumber,
-  onSectionSelect,
 }: {
   sections: CongestionRow[];
   gates: Gate[];
   focusSectionNumber?: string;
-  onSectionSelect?: (s: CongestionRow | null) => void;
 }) {
   return (
     <Canvas
       shadows
       camera={{ position: [15, 20, 20], fov: 45 }}
       style={{ background: 'transparent' }}
-      onPointerMissed={() => onSectionSelect?.(null)}
     >
       <Scene
         sections={sections}
         gates={gates}
         focusSectionNumber={focusSectionNumber}
-        onSectionSelect={onSectionSelect}
       />
     </Canvas>
   );

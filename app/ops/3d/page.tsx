@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -72,6 +72,100 @@ const FALLBACK_GATES: Gate[] = [
   { id: 'gate-d', name: 'Gate D', angle_deg: 315, lat: null, lng: null },
 ];
 
+function PriorityPanel({
+  sections,
+  focusedSectionNumber,
+  onSelect,
+}: {
+  sections: CongestionRow[];
+  focusedSectionNumber: string | undefined;
+  onSelect: (sectionNumber: string) => void;
+}) {
+  const prioritySections = useMemo(() => {
+    return sections
+      .filter((s) => s.level === 'medium' || s.level === 'high')
+      .sort((a, b) => b.device_count - a.device_count)
+      .map((s, i) => ({ ...s, priority: i + 1 }));
+  }, [sections]);
+
+  if (prioritySections.length === 0) {
+    return (
+      <div style={{
+        position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', zIndex: 10,
+        background: 'rgba(10,10,15,0.85)', backdropFilter: 'blur(8px)',
+        borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)',
+        padding: '14px 16px', color: '#64748b', fontSize: '0.78rem',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      }}>
+        No congestion hotspots
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', zIndex: 10,
+      background: 'rgba(10,10,15,0.88)', backdropFilter: 'blur(10px)',
+      borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)',
+      padding: '8px 0', minWidth: 200, maxWidth: 220,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+    }}>
+      <div style={{
+        padding: '4px 14px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+        marginBottom: 4, fontSize: '0.62rem', fontWeight: 700,
+        color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.12em',
+      }}>
+        Priority {prioritySections.length > 0 && `(${prioritySections.length})`}
+      </div>
+      {prioritySections.map((s) => {
+        const isActive = focusedSectionNumber === s.section_number;
+        return (
+          <div
+            key={s.section_id}
+            onClick={() => onSelect(s.section_number)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '7px 14px', cursor: 'pointer',
+              background: isActive ? 'rgba(99,102,241,0.15)' : 'transparent',
+              borderLeft: isActive ? '3px solid #818cf8' : '3px solid transparent',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) e.currentTarget.style.background = 'transparent';
+            }}
+          >
+            <span style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 22, height: 22, borderRadius: '50%',
+              background: s.level === 'high' ? '#ef4444' : '#f59e0b',
+              color: '#fff', fontSize: '0.65rem', fontWeight: 900, flexShrink: 0,
+            }}>
+              {s.priority}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#e2e8f0' }}>
+                  {s.section_number}
+                </span>
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%', display: 'inline-block',
+                  background: LEVEL_COLORS[s.level],
+                  boxShadow: `0 0 5px ${LEVEL_COLORS[s.level]}`,
+                }} />
+              </div>
+              <div style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                {s.tier} · {s.device_count} device{s.device_count === 1 ? '' : 's'}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Ops3DContent() {
   const router = useRouter();
   const supabase = getSupabaseBrowserClient();
@@ -81,8 +175,12 @@ function Ops3DContent() {
   const [authLoading, setAuthLoading] = useState(true);
   const [sections, setSections] = useState<CongestionRow[]>([]);
   const [gates, setGates] = useState<Gate[]>([]);
-  const [selectedSection, setSelectedSection] = useState<CongestionRow | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [focusedSectionNumber, setFocusedSectionNumber] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (sectionParam) setFocusedSectionNumber(sectionParam);
+  }, [sectionParam]);
 
   const fetchData = useCallback(async () => {
     setDataLoading(true);
@@ -150,8 +248,6 @@ function Ops3DContent() {
     return () => { supabase.removeChannel(channel); };
   }, [authLoading, supabase]);
 
-  const focusSectionNumber = sectionParam ?? undefined;
-
   const displayGates = gates.length > 0 ? gates : FALLBACK_GATES;
 
   if (authLoading) {
@@ -187,9 +283,9 @@ function Ops3DContent() {
         <h1 style={{ fontSize: '1rem', fontWeight: 700, color: '#f1f5f9', margin: 0, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
           Congestion Heatmap
         </h1>
-        {focusSectionNumber && (
+        {focusedSectionNumber && (
           <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '4px 0 0' }}>
-            Focused on Section {focusSectionNumber}
+            Focused on Section {focusedSectionNumber}
           </p>
         )}
       </div>
@@ -216,69 +312,10 @@ function Ops3DContent() {
         </div>
       </div>
 
+      <PriorityPanel sections={sections} focusedSectionNumber={focusedSectionNumber} onSelect={setFocusedSectionNumber} />
       <div style={{ width: '100%', height: '100%' }}>
-        <HeatmapScene sections={sections} gates={displayGates} focusSectionNumber={focusSectionNumber} onSectionSelect={setSelectedSection} />
+        <HeatmapScene sections={sections} gates={displayGates} focusSectionNumber={focusedSectionNumber} />
       </div>
-
-      {selectedSection && (
-        <>
-          <div
-            onClick={() => setSelectedSection(null)}
-            style={{ position: 'fixed', inset: 0, zIndex: 20 }}
-          />
-          <div style={{
-            position: 'absolute', zIndex: 25, bottom: 160, left: 16, maxWidth: 260,
-            background: 'rgba(15,15,25,0.9)', backdropFilter: 'blur(12px)',
-            borderRadius: '10px', border: `1px solid ${LEVEL_COLORS[selectedSection.level]}`,
-            borderLeft: `3px solid ${LEVEL_COLORS[selectedSection.level]}`,
-            padding: '16px 18px', color: '#e2e8f0',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
-            fontFamily: "'Inter', system-ui, sans-serif",
-            fontSize: '0.82rem', lineHeight: 1.5,
-            transition: 'all 0.2s',
-          }}>
-            <button
-              onClick={() => setSelectedSection(null)}
-              style={{
-                position: 'absolute', top: 6, right: 8,
-                background: 'none', border: 'none', color: '#64748b', cursor: 'pointer',
-                fontSize: '1rem', lineHeight: 1, padding: '2px 4px',
-              }}
-            >
-              ×
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{
-                display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
-                background: LEVEL_COLORS[selectedSection.level],
-                boxShadow: `0 0 6px ${LEVEL_COLORS[selectedSection.level]}`,
-              }} />
-              <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>
-                Section {selectedSection.section_number}
-              </span>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 12px', marginBottom: 6 }}>
-              <span style={{ color: '#94a3b8' }}>Tier</span>
-              <span style={{ fontWeight: 600 }}>{selectedSection.tier}</span>
-              <span style={{ color: '#94a3b8' }}>Devices</span>
-              <span style={{ fontWeight: 600 }}>{selectedSection.device_count}</span>
-              <span style={{ color: '#94a3b8' }}>Status</span>
-              <span style={{
-                fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem',
-                color: LEVEL_COLORS[selectedSection.level],
-              }}>
-                {selectedSection.level}
-              </span>
-              <span style={{ color: '#94a3b8' }}>Updated</span>
-              <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.75rem' }}>
-                {relativeTime(selectedSection.updated_at)}
-              </span>
-            </div>
-          </div>
-        </>
-      )}
     </main>
   );
 }

@@ -107,18 +107,18 @@ function SectionCard({ section }: { section: CongestionRow }) {
 
   const dotColor =
     section.level === 'high' ? 'bg-red-500'
-    : section.level === 'medium' ? 'bg-amber-500'
-    : 'bg-emerald-500';
+      : section.level === 'medium' ? 'bg-amber-500'
+        : 'bg-emerald-500';
 
   const borderColor =
     section.level === 'high' ? 'border-red-500/30 bg-red-500/[0.08]'
-    : section.level === 'medium' ? 'border-amber-400/20 bg-amber-400/[0.05]'
-    : 'border-emerald-400/15 bg-emerald-500/[0.04]';
+      : section.level === 'medium' ? 'border-amber-400/20 bg-amber-400/[0.05]'
+        : 'border-emerald-400/15 bg-emerald-500/[0.04]';
 
   const pillColors =
     section.level === 'high' ? 'border-red-400/[0.5] bg-red-500/[0.16] text-red-200'
-    : section.level === 'medium' ? 'border-amber-300/[0.5] bg-amber-400/[0.16] text-amber-100'
-    : 'border-emerald-400/[0.45] bg-emerald-500/[0.14] text-emerald-100';
+      : section.level === 'medium' ? 'border-amber-300/[0.5] bg-amber-400/[0.16] text-amber-100'
+        : 'border-emerald-400/[0.45] bg-emerald-500/[0.14] text-emerald-100';
 
   const popoverBorder = section.level === 'high'
     ? 'rgba(248,113,113,0.3)'
@@ -163,9 +163,8 @@ function SectionCard({ section }: { section: CongestionRow }) {
   return (
     <div
       ref={cardRef}
-      className={`group relative rounded-md border p-2 ${
-        section.level === 'high' && 'ops-card-high'
-      } ${borderColor}`}
+      className={`group relative rounded-md border p-2 ${section.level === 'high' && 'ops-card-high'
+        } ${borderColor}`}
       onMouseEnter={show}
       onMouseLeave={scheduleHide}
     >
@@ -188,11 +187,9 @@ function SectionCard({ section }: { section: CongestionRow }) {
 
       {/* ── Detail card popover ── */}
       <div
-        className={`absolute z-50 transition-all duration-150 ${
-          posAbove ? 'bottom-full mb-2.5' : 'top-full mt-2.5'
-        } left-1/2 -translate-x-1/2 ${
-          showDetail ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
-        }`}
+        className={`absolute z-50 transition-all duration-150 ${posAbove ? 'bottom-full mb-2.5' : 'top-full mt-2.5'
+          } left-1/2 -translate-x-1/2 ${showDetail ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+          }`}
         style={{ transformOrigin: posAbove ? 'bottom center' : 'top center' }}
         onMouseEnter={cancelHide}
         onMouseLeave={scheduleHide}
@@ -415,11 +412,11 @@ export default function OpsDashboardPage() {
               .map((section) =>
                 section.section_id === updated.section_id
                   ? {
-                      ...section,
-                      device_count: updated.device_count ?? section.device_count,
-                      level: updated.level ?? section.level,
-                      updated_at: updated.updated_at ?? section.updated_at,
-                    }
+                    ...section,
+                    device_count: updated.device_count ?? section.device_count,
+                    level: updated.level ?? section.level,
+                    updated_at: updated.updated_at ?? section.updated_at,
+                  }
                   : section,
               )
               .sort(compareSections),
@@ -708,9 +705,8 @@ export default function OpsDashboardPage() {
                     return (
                       <div key={group.key} className="space-y-1">
                         <article
-                          className={`rounded-lg border border-white/[0.08] bg-white/[0.035] p-3 ${
-                            flashingAlertIds.includes(group.top.id) ? 'ops-alert-flash' : ''
-                          }`}
+                          className={`rounded-lg border border-white/[0.08] bg-white/[0.035] p-3 ${flashingAlertIds.includes(group.top.id) ? 'ops-alert-flash' : ''
+                            }`}
                         >
                           <div className="mb-2 flex items-center justify-between gap-2">
                             <span className={`rounded-full border px-2 py-1 text-[0.66rem] font-bold uppercase ${severityClasses(group.top.severity)}`}>
