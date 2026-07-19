@@ -141,20 +141,15 @@ function buildWedgePath(idx: number, innerS: number, outerS: number): string {
   ].join(' ');
 }
 
-function wedgeGradId(level: string): string {
-  return level === 'high' ? 'url(#grad-high)' : level === 'medium' ? 'url(#grad-med)' : 'url(#grad-low)';
-}
-
-function wedgeBaseOpacity(level: string): number {
-  return level === 'high' ? 0.82 : level === 'medium' ? 0.68 : 0.55;
+function wedgeFillColor(level: string): string {
+  return level === 'high' ? '#dc2626' : level === 'medium' ? '#d97706' : '#059669';
 }
 
 function levelGradientColor(level: string): string {
   return level === 'high' ? '#dc2626' : level === 'medium' ? '#b45309' : '#047857';
 }
 
-const GATE_MARKER_SCALE = HEATMAP_UO + 0.02;
-const GATE_LABEL_SCALE = HEATMAP_UO + 0.18;
+const GATE_MARKER_SCALE = HEATMAP_UO + 0.04;
 
 function SectionHeatmapSVG({
   sections,
@@ -234,18 +229,15 @@ function SectionHeatmapSVG({
       const level = row?.level ?? 'low';
       const d = buildWedgePath(i, innerS, outerS);
       const hi = hovered?.tier === tierKey && hovered?.index === i;
-      const baseOp = wedgeBaseOpacity(level);
       return (
         <g key={`${tierKey}-${i}`}>
           <path
             d={d}
-            fill={wedgeGradId(level)}
-            fillOpacity={hi ? 0.95 : baseOp}
+            fill={wedgeFillColor(level)}
+            fillOpacity={hi ? 1 : 0.85}
             stroke={hi ? '#f8fafc' : 'rgba(255,255,255,0.08)'}
             strokeWidth={hi ? 1.5 : 0.4}
-            filter="url(#wedge-shadow)"
-            className={level === 'high' && !hi ? 'ops-wedge-fill-pulse' : undefined}
-            style={{ cursor: row ? 'pointer' : 'default', transition: 'fill-opacity 0.15s', '--base-fill': baseOp } as React.CSSProperties}
+            style={{ cursor: row ? 'pointer' : 'default', transition: 'fill-opacity 0.15s' }}
             onMouseEnter={(e) => handleEnter(e, row, tierKey, i)}
             onMouseLeave={handleLeave}
           />
@@ -273,32 +265,8 @@ function SectionHeatmapSVG({
           onMouseMove={handleMove}
         >
           <defs>
-            {/* Level gradients */}
-            <radialGradient id="grad-low" cx="35%" cy="35%" r="70%">
-              <stop offset="0%" stopColor="#6ee7b7" />
-              <stop offset="100%" stopColor="#059669" />
-            </radialGradient>
-            <radialGradient id="grad-med" cx="35%" cy="35%" r="70%">
-              <stop offset="0%" stopColor="#fde68a" />
-              <stop offset="100%" stopColor="#d97706" />
-            </radialGradient>
-            <radialGradient id="grad-high" cx="35%" cy="35%" r="70%">
-              <stop offset="0%" stopColor="#fca5a5" />
-              <stop offset="100%" stopColor="#dc2626" />
-            </radialGradient>
-            {/* Drop shadows */}
-            <filter id="wedge-shadow" x="-15%" y="-15%" width="130%" height="130%">
-              <feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodColor="#000" floodOpacity="0.4" />
-            </filter>
             <filter id="pitch-shadow" x="-10%" y="-10%" width="120%" height="120%">
               <feDropShadow dx="0" dy="2.5" stdDeviation="4" floodColor="#000" floodOpacity="0.5" />
-            </filter>
-            <filter id="gate-glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
             </filter>
           </defs>
 
@@ -327,30 +295,26 @@ function SectionHeatmapSVG({
           {/* ── Gate markers ──────────────────────────────────────────────── */}
           {gates.map((gate) => {
             const [mx, my] = heatmapPoint(gate.angle_deg, GATE_MARKER_SCALE);
-            const [lx, ly] = heatmapPoint(gate.angle_deg, GATE_LABEL_SCALE);
-            const pillW = gate.name.length * 5.5 + 12;
-            const pillH = 15;
+            const label = gate.name.startsWith('Gate ') ? gate.name : `Gate ${gate.name}`;
+            const pillW = Math.max(label.length * 5 + 10, 28);
+            const pillH = 14;
             return (
               <g key={gate.id}>
-                {/* Glow behind marker */}
-                <circle cx={mx} cy={my} r={6} fill="#f59e0b" opacity={0.2} filter="url(#gate-glow)" />
-                {/* Marker dot */}
-                <circle cx={mx} cy={my} r={3.5} fill="#f59e0b" className="ops-gate-pulse" />
-                {/* Pill badge background */}
+                {/* Pill badge */}
                 <rect
-                  x={lx - pillW / 2} y={ly - pillH / 2}
+                  x={mx - pillW / 2} y={my - pillH / 2}
                   width={pillW} height={pillH} rx={pillH / 2}
-                  fill="rgba(0,0,0,0.7)"
-                  stroke="rgba(245,158,11,0.35)"
-                  strokeWidth={0.8}
+                  fill="rgba(15,23,42,0.85)"
+                  stroke="rgba(245,158,11,0.5)"
+                  strokeWidth={1}
                 />
                 {/* Pill badge text */}
                 <text
-                  x={lx} y={ly + 1}
+                  x={mx} y={my + 1}
                   textAnchor="middle" dominantBaseline="central"
                   fill="#fbbf24" fontSize="7.5" fontFamily="sans-serif" fontWeight={700}
                   style={{ pointerEvents: 'none', userSelect: 'none' }}
-                >{gate.name}</text>
+                >{label}</text>
               </g>
             );
           })}
@@ -362,7 +326,7 @@ function SectionHeatmapSVG({
               x={heatmapPoint(90, (HEATMAP_LI + HEATMAP_LO) / 2)[0]}
               y={heatmapPoint(90, HEATMAP_LO + 0.35)[1]}
               textAnchor="middle" dominantBaseline="central"
-              fill="rgba(148,163,184,0.5)" fontSize="7.5" fontFamily="sans-serif" fontWeight={700}
+              fill="rgba(148,163,184,0.7)" fontSize="8" fontFamily="sans-serif" fontWeight={700}
               letterSpacing="0.2em"
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >LOWER TIER</text>
@@ -373,14 +337,14 @@ function SectionHeatmapSVG({
               x={heatmapPoint(270, (HEATMAP_UI + HEATMAP_UO) / 2)[0]}
               y={heatmapPoint(270, HEATMAP_UO + 0.35)[1]}
               textAnchor="middle" dominantBaseline="central"
-              fill="rgba(148,163,184,0.5)" fontSize="7.5" fontFamily="sans-serif" fontWeight={700}
+              fill="rgba(148,163,184,0.7)" fontSize="8" fontFamily="sans-serif" fontWeight={700}
               letterSpacing="0.2em"
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >UPPER TIER</text>
           </g>
 
           {/* ── Legend ─────────────────────────────────────────────────────── */}
-          <g transform="translate(390, 20)">
+          <g transform="translate(385, 390)">
             {/* Panel bg */}
             <rect x={0} y={0} width={92} height={76} rx={8} fill="rgba(15,23,42,0.8)" stroke="rgba(255,255,255,0.08)" strokeWidth={0.8} />
             <text x={46} y={16} textAnchor="middle" fill="#94a3b8" fontSize="7" fontFamily="sans-serif" fontWeight={600} letterSpacing="0.1em">LEGEND</text>
@@ -650,27 +614,12 @@ export default function OpsDashboardPage() {
         }
 
         @keyframes opsWedgePulse {
-          0%, 100% { stroke-opacity: 0.08; stroke-width: 3; }
-          50%      { stroke-opacity: 0.85; stroke-width: 6; }
-        }
-        @keyframes opsWedgeFillPulse {
-          0%, 100% { fill-opacity: var(--base-fill); }
-          50%      { fill-opacity: 1; }
+          0%, 100% { stroke-opacity: 0.1; }
+          50%      { stroke-opacity: 0.9; }
         }
         .ops-wedge-pulse {
           animation: opsWedgePulse 1.4s ease-in-out infinite;
           pointer-events: none;
-        }
-        .ops-wedge-fill-pulse {
-          animation: opsWedgeFillPulse 1.4s ease-in-out infinite;
-        }
-
-        .ops-gate-pulse {
-          animation: opsGatePulse 2.2s ease-in-out infinite;
-        }
-        @keyframes opsGatePulse {
-          0%, 100% { opacity: 0.5; r: 3; }
-          50%      { opacity: 1; r: 4.5; }
         }
       `}</style>
 
