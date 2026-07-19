@@ -343,6 +343,13 @@ export default function OpsDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<'spike' | 'reset' | null>(null);
   const [flashingAlertIds, setFlashingAlertIds] = useState<string[]>([]);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+
+  function toggleExpand(key: string) {
+    setExpandedGroups((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  }
 
   const fetchDashboardData = useCallback(async () => {
     setDataLoading(true);
@@ -494,11 +501,56 @@ export default function OpsDashboardPage() {
     }
   }
 
+  async function handleResolveGroup(groupKey: string) {
+    const group = alertGroups.find((g) => g.key === groupKey);
+    if (!group) return;
+
+    const idsToRemove = new Set([group.top, ...group.rest].map((a) => a.id));
+    const prevAlerts = alerts;
+    setAlerts((prev) => prev.filter((a) => !idsToRemove.has(a.id)));
+
+    try {
+      if (group.top.section_id) {
+        await fetch(
+          buildApiUrl(`/alerts/resolve-by-section/${group.top.section_id}`),
+          { method: 'POST' },
+        );
+      } else {
+        await Promise.all(
+          [group.top, ...group.rest].map((a) =>
+            fetch(buildApiUrl(`/alerts/${a.id}/resolve`), { method: 'PATCH' }),
+          ),
+        );
+      }
+    } catch {
+      setAlerts(prevAlerts);
+    }
+  }
+
   const sectionNumBySectionId = useMemo(() => {
     const m = new Map<string, string>();
     sections.forEach((s) => m.set(s.section_id, s.section_number));
     return m;
   }, [sections]);
+
+  const alertGroups = useMemo(() => {
+    const groups = new Map<string, AlertRow[]>();
+    for (const alert of alerts) {
+      const key = alert.section_id ?? `__no_section_${alert.id}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(alert);
+    }
+    return Array.from(groups.entries())
+      .map(([key, items]) => {
+        const sorted = items.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+        return { key, top: sorted[0], rest: sorted.slice(1) };
+      })
+      .sort(
+        (a, b) => new Date(b.top.created_at).getTime() - new Date(a.top.created_at).getTime(),
+      );
+  }, [alerts]);
 
   const statusCounts = useMemo(
     () =>
@@ -637,7 +689,7 @@ export default function OpsDashboardPage() {
               </div>
             </section>
 
-            <section className="flex min-h-[520px] flex-col rounded-lg border border-white/[0.08] bg-white/[0.025] shadow-xl shadow-black/25">
+            <section className="flex max-h-[600px] flex-col rounded-lg border border-white/[0.08] bg-white/[0.025] shadow-xl shadow-black/25">
               <div className="border-b border-white/[0.08] p-4">
                 <h2 className="m-0 text-base font-semibold text-slate-100">Recent Alerts</h2>
                 <p className="m-0 mt-1 text-sm text-slate-500">Newest incidents appear first</p>
@@ -646,35 +698,82 @@ export default function OpsDashboardPage() {
               <div className="ops-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
                 {dataLoading ? (
                   <p className="m-0 text-sm text-slate-500">Loading alerts...</p>
-                ) : alerts.length ? (
-                  alerts.map((alert) => {
-                    const sectionNumber = alert.section_id ? sectionNumBySectionId.get(alert.section_id) : undefined;
+                ) : alertGroups.length ? (
+                  alertGroups.map((group) => {
+                    const totalCount = 1 + group.rest.length;
+                    const sectionNumber = group.top.section_id
+                      ? sectionNumBySectionId.get(group.top.section_id)
+                      : undefined;
+                    const isExpanded = expandedGroups.includes(group.key);
                     return (
-                    <article
-                      key={alert.id}
-                      className={`rounded-lg border border-white/[0.08] bg-white/[0.035] p-3 ${
-                        flashingAlertIds.includes(alert.id) ? 'ops-alert-flash' : ''
-                      }`}
-                    >
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <span className={`rounded-full border px-2 py-1 text-[0.66rem] font-bold uppercase ${severityClasses(alert.severity)}`}>
-                          {alert.severity}
-                        </span>
-                        <time className="text-xs text-slate-500">{relativeTime(alert.created_at)}</time>
+                      <div key={group.key} className="space-y-1">
+                        <article
+                          className={`rounded-lg border border-white/[0.08] bg-white/[0.035] p-3 ${
+                            flashingAlertIds.includes(group.top.id) ? 'ops-alert-flash' : ''
+                          }`}
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className={`rounded-full border px-2 py-1 text-[0.66rem] font-bold uppercase ${severityClasses(group.top.severity)}`}>
+                              {group.top.severity}
+                            </span>
+                            <time className="text-xs text-slate-500">{relativeTime(group.top.created_at)}</time>
+                          </div>
+                          <p className="m-0 text-sm leading-5 text-slate-200">{group.top.message}</p>
+                          <div className="mt-2 flex items-center gap-3">
+                            {sectionNumber && (
+                              <Link
+                                href={`/ops/3d?section=${sectionNumber}`}
+                                className="text-xs font-semibold text-indigo-400 transition hover:text-indigo-300"
+                              >
+                                View in 3D &rarr;
+                              </Link>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleResolveGroup(group.key)}
+                              className="flex items-center gap-1 text-xs font-semibold text-emerald-400 transition hover:text-emerald-300"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              Resolve
+                            </button>
+                            {totalCount > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => toggleExpand(group.key)}
+                                className="ml-auto flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs font-semibold text-slate-400 transition hover:border-white/20 hover:text-slate-200"
+                              >
+                                &times;{totalCount}
+                                <svg
+                                  width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                  className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                >
+                                  <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                        {isExpanded && group.rest.map((alert) => {
+                          const restSectionNumber = alert.section_id
+                            ? sectionNumBySectionId.get(alert.section_id)
+                            : undefined;
+                          return (
+                            <article key={alert.id} className="rounded-lg border border-white/[0.05] bg-white/[0.015] p-2 pl-5">
+                              <div className="flex items-center justify-between gap-2">
+                                <time className="text-[0.6rem] text-slate-500">{relativeTime(alert.created_at)}</time>
+                                {restSectionNumber && (
+                                  <Link href={`/ops/3d?section=${restSectionNumber}`} className="text-[0.6rem] font-semibold text-indigo-400/70 hover:text-indigo-300">
+                                    View &rarr;
+                                  </Link>
+                                )}
+                              </div>
+                              <p className="m-0 mt-0.5 text-xs leading-4 text-slate-400">{alert.message}</p>
+                            </article>
+                          );
+                        })}
                       </div>
-                      <p className="m-0 text-sm leading-5 text-slate-200">{alert.message}</p>
-                      <div className="mt-2 flex items-center gap-3">
-                        {sectionNumber && (
-                          <Link
-                            href={`/ops/3d?section=${sectionNumber}`}
-                            className="text-xs font-semibold text-indigo-400 transition hover:text-indigo-300"
-                          >
-                            View in 3D &rarr;
-                          </Link>
-                        )}
-                        {alert.resolved && <span className="text-xs font-semibold text-emerald-300">Resolved</span>}
-                      </div>
-                    </article>
                     );
                   })
                 ) : (
