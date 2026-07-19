@@ -117,51 +117,57 @@ function PriorityPanel({
       }}>
         Priority {prioritySections.length > 0 && `(${prioritySections.length})`}
       </div>
-      {prioritySections.map((s) => {
-        const isActive = focusedSectionNumber === s.section_number;
-        return (
-          <div
-            key={s.section_id}
-            onClick={() => onSelect(s.section_number)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '7px 14px', cursor: 'pointer',
-              background: isActive ? 'rgba(99,102,241,0.15)' : 'transparent',
-              borderLeft: isActive ? '3px solid #818cf8' : '3px solid transparent',
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-            }}
-            onMouseLeave={(e) => {
-              if (!isActive) e.currentTarget.style.background = 'transparent';
-            }}
-          >
-            <span style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 22, height: 22, borderRadius: '50%',
-              background: s.level === 'high' ? '#ef4444' : '#f59e0b',
-              color: '#fff', fontSize: '0.65rem', fontWeight: 900, flexShrink: 0,
-            }}>
-              {s.priority}
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#e2e8f0' }}>
-                  {s.section_number}
+      <div 
+        className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto px-2 pb-2"
+        style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(148, 163, 184, 0.35) rgba(15, 23, 42, 0.5)' }}
+      >
+        {prioritySections.map((s) => {
+          const isActive = focusedSectionNumber === s.section_number;
+          const isHigh = s.level === 'high';
+          
+          return (
+            <div
+              key={s.section_id}
+              onClick={() => onSelect(s.section_number)}
+              className={`group cursor-pointer rounded-lg border p-2.5 transition-all ${
+                isHigh
+                  ? 'border-red-500/30 bg-red-500/[0.04] hover:bg-red-500/[0.08]'
+                  : 'border-amber-400/30 bg-amber-400/[0.04] hover:bg-amber-400/[0.08]'
+              } ${isActive ? (isHigh ? 'ring-1 ring-red-500/50' : 'ring-1 ring-amber-400/50') : ''}`}
+            >
+              {/* Header */}
+              <div className="mb-2.5 flex items-center gap-2">
+                <span
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-black text-white"
+                  style={{ background: isHigh ? '#ef4444' : '#f59e0b' }}
+                >
+                  {s.priority}
                 </span>
-                <span style={{
-                  width: 6, height: 6, borderRadius: '50%', display: 'inline-block',
-                  background: LEVEL_COLORS[s.level],
-                  boxShadow: `0 0 5px ${LEVEL_COLORS[s.level]}`,
-                }} />
+                <span
+                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{
+                    background: LEVEL_COLORS[s.level],
+                    boxShadow: `0 0 6px ${LEVEL_COLORS[s.level]}`,
+                  }}
+                />
+                <span className="text-[0.8rem] font-bold text-slate-100">Section {s.section_number}</span>
               </div>
-              <div style={{ fontSize: '0.6rem', color: '#64748b' }}>
-                {s.tier} · {s.device_count} device{s.device_count === 1 ? '' : 's'}
+
+              {/* Label-Value Grid */}
+              <div className="grid grid-cols-2 gap-2 rounded bg-white/[0.03] p-2 text-xs">
+                <div>
+                  <span className="block text-[0.55rem] uppercase tracking-wider text-slate-500">Tier</span>
+                  <span className="font-semibold text-slate-200">{s.tier}</span>
+                </div>
+                <div>
+                  <span className="block text-[0.55rem] uppercase tracking-wider text-slate-500">Devices</span>
+                  <span className="font-semibold text-slate-200">{s.device_count}</span>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
