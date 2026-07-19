@@ -4,6 +4,23 @@ import { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Line, Html, Text } from '@react-three/drei';
 import * as THREE from 'three';
+import {
+  TOTAL_SECTIONS, TWO_PI,
+  BASE_RADIUS_X, BASE_RADIUS_Z,
+  LOWER_INNER_SCALE, LOWER_OUTER_SCALE, UPPER_INNER_SCALE, UPPER_OUTER_SCALE,
+  LOWER_INNER_RX, LOWER_OUTER_RX, UPPER_INNER_RX, UPPER_OUTER_RX,
+  LOWER_Y, LOWER_DEPTH, UPPER_Y, UPPER_DEPTH,
+  CONCOURSE_INNER_SCALE, CONCOURSE_OUTER_SCALE, CONCOURSE_MID_SCALE,
+  CONCOURSE_Y, CONCOURSE_THICKNESS,
+  GATE_SCALE, GATE_Y,
+  VOM_WIDTH, VOM_HEIGHT, VOM_DEPTH_SIZE,
+  PITCH_LENGTH, PITCH_WIDTH,
+  ROOF_SCALE, ROOF_Y,
+  COLOR_LOWER_DEFAULT, COLOR_UPPER_DEFAULT, COLOR_HIGHLIGHTED,
+  COLOR_GATE, COLOR_PATH, COLOR_PITCH, COLOR_PITCH_LINES,
+  COLOR_CONCOURSE, COLOR_VOMITORY,
+  bowlPosition, sectionAngleDeg,
+} from '@/lib/stadiumGeometry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,102 +41,9 @@ type Zone = {
   gate: Gate;
 };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const TOTAL_SECTIONS = 24;
-const TWO_PI = Math.PI * 2;
-
-// ── Ellipse axes (single source of truth for bowl shape) ──────────────────────
-// radiusX is the wider axis (matches pitch length), radiusZ is narrower (pitch width).
-// Ratio ~1.4 : 1 mirrors the ~5 : 3.2 pitch proportions, giving an oval silhouette.
-const BASE_RADIUS_X = 7.0; // wider axis
-const BASE_RADIUS_Z = 5.0; // narrower axis
-
-// ── Tier scale factors (inner/outer edge of each tier as fractions of base) ───
-// Lower tier: inner = 0.50, outer = 0.86
-// Upper tier: inner = 0.93, outer = 1.29
-const LOWER_INNER_SCALE = 0.50;
-const LOWER_OUTER_SCALE = 0.86;
-const UPPER_INNER_SCALE = 0.93;
-const UPPER_OUTER_SCALE = 1.29;
-
-// Convenience — actual X-axis radii for each tier edge (used in arc helpers)
-const LOWER_INNER_RX = BASE_RADIUS_X * LOWER_INNER_SCALE;
-const LOWER_OUTER_RX = BASE_RADIUS_X * LOWER_OUTER_SCALE;
-const UPPER_INNER_RX = BASE_RADIUS_X * UPPER_INNER_SCALE;
-const UPPER_OUTER_RX = BASE_RADIUS_X * UPPER_OUTER_SCALE;
-
-const LOWER_Y = 0;
-const LOWER_DEPTH = 1.2;
-const UPPER_Y = 2.0;
-const UPPER_DEPTH = 1.8;
-
-// Concourse — the walkable band between the bowl rim and the gates
-const CONCOURSE_INNER_SCALE = UPPER_OUTER_SCALE + 0.02;
-const CONCOURSE_OUTER_SCALE = UPPER_OUTER_SCALE + 0.26;
-const CONCOURSE_MID_SCALE   = (CONCOURSE_INNER_SCALE + CONCOURSE_OUTER_SCALE) / 2;
-const CONCOURSE_Y = UPPER_Y + UPPER_DEPTH - 0.05;
-const CONCOURSE_THICKNESS = 0.12;
-
-// Gate markers sit on the outer edge of the concourse
-const GATE_SCALE = CONCOURSE_OUTER_SCALE + 0.06;
-const GATE_Y = CONCOURSE_Y + 0.01;
-
-// Vomitory dimensions (tunnel opening into the seating bowl)
-const VOM_WIDTH = 0.35;
-const VOM_HEIGHT = 0.7;
-const VOM_DEPTH_SIZE = 0.5;
-
-// Pitch dimensions (kept as-is)
-const PITCH_LENGTH = 5.0;
-const PITCH_WIDTH = 3.2;
-
-// Roof ring scale factor (sits above the mid-upper tier)
-const ROOF_SCALE = (UPPER_INNER_SCALE + UPPER_OUTER_SCALE) / 2;
-const ROOF_Y = UPPER_Y + UPPER_DEPTH + 1.5;
-
-// Colors
-const COLOR_LOWER_DEFAULT = '#4f46e5';
-const COLOR_UPPER_DEFAULT = '#7c3aed';
-const COLOR_HIGHLIGHTED   = '#4ade80';
-const COLOR_GATE          = '#f59e0b';
-const COLOR_PATH          = '#4ade80';
-const COLOR_PITCH         = '#16a34a';
-const COLOR_PITCH_LINES   = '#22c55e';
-const COLOR_CONCOURSE     = '#9ca3af';
-const COLOR_VOMITORY      = '#0f0f1a';
-
 // Path animation
 const PATH_SPHERE_COUNT  = 5;
 const PATH_SPHERE_RADIUS = 0.15;
-
-// ─── Single shared position helper ───────────────────────────────────────────
-//
-// THIS IS THE ONLY PLACE in the file that converts an angle to a bowl position.
-// Every wedge, gate, concourse point, vomitory, and path arc must call this.
-//
-// Convention:
-//   angleDeg = 0   → positive X axis  (right side of the oval)
-//   angleDeg = 90  → positive Z axis  (far end of the oval, narrower axis)
-//   radiusScale    → multiplied against BASE_RADIUS_X / BASE_RADIUS_Z
-//
-// Returns [x, z] — caller supplies the Y coordinate.
-
-function bowlPosition(angleDeg: number, radiusScale = 1): [number, number] {
-  const rad = (angleDeg * Math.PI) / 180;
-  const rx = BASE_RADIUS_X * radiusScale;
-  const rz = BASE_RADIUS_Z * radiusScale;
-  const x  = Math.cos(rad) * rx;
-  const z  = Math.sin(rad) * rz;
-  return [x, z];
-}
-
-// ─── Derived angle helpers ────────────────────────────────────────────────────
-
-/** Convert section_index (0–23) to its centre angle in degrees */
-function sectionAngleDeg(index: number): number {
-  return (index / TOTAL_SECTIONS) * 360;
-}
 
 // ─── Geometry helpers ─────────────────────────────────────────────────────────
 

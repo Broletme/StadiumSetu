@@ -172,7 +172,7 @@ function SectionCard({ section }: { section: CongestionRow }) {
       <div className="flex items-center justify-between">
         <span className={`inline-block h-2 w-2 rounded-full ${dotColor}`} />
         <Link
-          href={`/fan/3d?section=${section.section_number}`}
+          href={`/ops/3d?section=${section.section_number}`}
           className="text-slate-600 opacity-0 transition-opacity hover:text-indigo-400 group-hover:opacity-100"
           aria-label="View in 3D"
         >
@@ -242,7 +242,7 @@ function SectionCard({ section }: { section: CongestionRow }) {
 
           {/* View in 3D button */}
           <Link
-            href={`/fan/3d?section=${section.section_number}`}
+            href={`/ops/3d?section=${section.section_number}`}
             className="flex items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-indigo-400 transition hover:border-indigo-400/30 hover:bg-indigo-500/[0.12] hover:text-indigo-300"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
@@ -666,7 +666,7 @@ export default function OpsDashboardPage() {
                       <div className="mt-2 flex items-center gap-3">
                         {sectionNumber && (
                           <Link
-                            href={`/fan/3d?section=${sectionNumber}`}
+                            href={`/ops/3d?section=${sectionNumber}`}
                             className="text-xs font-semibold text-indigo-400 transition hover:text-indigo-300"
                           >
                             View in 3D &rarr;
