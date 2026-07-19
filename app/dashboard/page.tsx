@@ -12,7 +12,7 @@ export default function DashboardPage() {
   const supabase = getSupabaseBrowserClient();
 
   // hover state for each clickable card
-  const [hovered, setHovered] = useState<'seat' | '3d' | null>(null);
+  const [hovered, setHovered] = useState<'seat' | '3d' | 'ops' | null>(null);
 
   useEffect(() => {
     // Guard: redirect to login if not authenticated
@@ -177,17 +177,27 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {/* Card 3 — Operations (disabled, no hover) */}
+            {/* Card 3 — Operations */}
             <div className="db-card-2">
-              <div style={{ ...styles.cardLink, ...styles.featureCardDisabled }}>
-                <div style={styles.featureCard}>
-                  <div style={styles.featureTitleRow}>
-                    <h3 style={styles.featureTitle}>⚙️ Operations</h3>
-                    <span style={styles.badge}>Coming Soon</span>
-                  </div>
-                  <p style={styles.featureDesc}>Manage zones, real-time incidents and staff deployments</p>
+              <Link
+                href="/ops"
+                style={styles.cardLink}
+                onMouseEnter={() => setHovered('ops')}
+                onMouseLeave={() => setHovered(null)}
+              >
+                <div
+                  style={{
+                    ...styles.featureCard,
+                    ...(hovered === 'ops' ? styles.featureCardHovered : {}),
+                  }}
+                  className="db-feature-card"
+                >
+                  <h3 style={styles.featureTitle} className="db-feature-title">
+                    <span className="db-card-icon">⚙️</span> Operations
+                  </h3>
+                  <p style={styles.featureDesc}>Live heatmap, real-time alerts, and crowd spike simulation</p>
                 </div>
-              </div>
+              </Link>
             </div>
 
           </div>
@@ -320,17 +330,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(99,102,241,0.45)',
     boxShadow: '0 0 0 1px rgba(99,102,241,0.2), 0 8px 32px rgba(99,102,241,0.12)',
   },
-  featureCardDisabled: {
-    opacity: 0.45,
-    cursor: 'not-allowed',
-    pointerEvents: 'none',
-  },
-  featureTitleRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '0.4rem',
-  },
   featureTitle: {
     fontSize: '1rem',
     fontWeight: 600,
@@ -342,15 +341,5 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#64748b',
     margin: 0,
     lineHeight: 1.4,
-  },
-  badge: {
-    background: 'rgba(99,102,241,0.15)',
-    color: '#818cf8',
-    border: '1px solid rgba(99,102,241,0.3)',
-    fontSize: '0.65rem',
-    fontWeight: 600,
-    padding: '0.15rem 0.5rem',
-    borderRadius: '999px',
-    textTransform: 'uppercase',
   },
 };

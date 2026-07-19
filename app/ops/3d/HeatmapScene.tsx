@@ -692,13 +692,18 @@ function RoofCanopy() {
 
 // ─── Camera controller ────────────────────────────────────────────────────────
 
-function CameraController({ target }: { target: THREE.Vector3 | null }) {
+interface FocusState {
+  target: THREE.Vector3;
+  cameraPos: THREE.Vector3;
+}
+
+function CameraController({ focusState }: { focusState: FocusState | null }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const hasAnimated = useRef(false);
   const prevTargetKey = useRef<string | null>(null);
 
-  const targetKey = target ? `${target.x.toFixed(2)},${target.y.toFixed(2)},${target.z.toFixed(2)}` : null;
+  const targetKey = focusState ? `${focusState.target.x.toFixed(2)},${focusState.target.y.toFixed(2)},${focusState.target.z.toFixed(2)}` : null;
   if (targetKey !== prevTargetKey.current) {
     hasAnimated.current = false;
     prevTargetKey.current = targetKey;
@@ -718,14 +723,14 @@ function CameraController({ target }: { target: THREE.Vector3 | null }) {
   }, []);
 
   useFrame((_state, delta) => {
-    if (!target || hasAnimated.current) return;
-    const offset = new THREE.Vector3(target.x * 0.5 + 2, target.y + 7, target.z + 9);
-    camera.position.lerp(offset, delta * 4);
+    if (!focusState || hasAnimated.current) return;
+    const { target, cameraPos } = focusState;
+    camera.position.lerp(cameraPos, delta * 4);
     if (controlsRef.current) {
       controlsRef.current.target.lerp(target, delta * 4);
       controlsRef.current.update();
     }
-    if (camera.position.distanceTo(offset) < 0.15) {
+    if (camera.position.distanceTo(cameraPos) < 0.15) {
       hasAnimated.current = true;
     }
   });
@@ -769,7 +774,7 @@ function Scene({
     return `${section.tier.toLowerCase().includes('lower') ? 'lower' : 'upper'}-${section.section_index}`;
   }, [focusSectionNumber, sections]);
 
-  const focusTarget = useMemo(() => {
+  const focusState = useMemo((): FocusState | null => {
     if (!focusSectionNumber) return null;
     const section = sections.find((s) => s.section_number === focusSectionNumber);
     if (!section) return null;
@@ -780,8 +785,11 @@ function Scene({
     const depth = isLower ? LOWER_DEPTH : UPPER_DEPTH;
     const deg = sectionAngleDeg(section.section_index);
     const midScale = (innerScale + outerScale) / 2;
-    const [x, z] = bowlPosition(deg, midScale);
-    return new THREE.Vector3(x, y + depth / 2, z);
+    const [tx, tz] = bowlPosition(deg, midScale);
+    const target = new THREE.Vector3(tx, y + depth / 2, tz);
+    const cameraPos = new THREE.Vector3(tx, 35, tz);
+
+    return { target, cameraPos };
   }, [focusSectionNumber, sections]);
 
   return (
@@ -817,7 +825,7 @@ function Scene({
       {gates.map((gate) => (
         <GateMarker key={gate.id} gate={gate} />
       ))}
-      <CameraController target={focusTarget} />
+      <CameraController focusState={focusState} />
     </>
   );
 }
