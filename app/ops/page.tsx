@@ -99,37 +99,38 @@ function StadiumLogo() {
 // ─── Section Card Grid ────────────────────────────────────────────────────────
 
 function SectionCard({ section }: { section: CongestionRow }) {
+  const dotColor =
+    section.level === 'high' ? 'bg-red-500'
+    : section.level === 'medium' ? 'bg-amber-500'
+    : 'bg-emerald-500';
+
   return (
     <div
-      className={`rounded-lg border p-3 ${
+      className={`group relative rounded-md border p-2 ${
         section.level === 'high'
           ? 'border-red-500/30 bg-red-500/[0.08] ops-card-high'
           : section.level === 'medium'
-            ? 'border-amber-400/25 bg-amber-400/[0.06]'
-            : 'border-emerald-400/20 bg-emerald-500/[0.05]'
+            ? 'border-amber-400/20 bg-amber-400/[0.05]'
+            : 'border-emerald-400/15 bg-emerald-500/[0.04]'
       }`}
+      title={`Devices: ${section.device_count} · Updated ${relativeTime(section.updated_at)}`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-slate-500">Section</span>
-        <span className={`rounded-full border px-2 py-0.5 text-[0.6rem] font-bold uppercase ${severityClasses(section.level)}`}>
-          {section.level}
-        </span>
-      </div>
-      <div className="mt-1 text-lg font-bold text-slate-100">{section.section_number}</div>
-      <div className="mt-2 text-xs text-slate-400">
-        Devices: <strong className="text-slate-300">{section.device_count}</strong>
-      </div>
-      <div className="mt-0.5 text-[0.65rem] text-slate-500">
-        {relativeTime(section.updated_at)}
-      </div>
-      <div className="mt-2">
+        <span className={`inline-block h-2 w-2 rounded-full ${dotColor}`} />
         <Link
           href={`/fan/3d?section=${section.section_number}`}
-          className="text-[0.65rem] font-semibold text-indigo-400 transition hover:text-indigo-300"
+          className="text-slate-600 opacity-0 transition-opacity hover:text-indigo-400 group-hover:opacity-100"
+          aria-label="View in 3D"
         >
-          View in 3D &rarr;
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+            <line x1="12" y1="22.08" x2="12" y2="12" />
+          </svg>
         </Link>
       </div>
+      <div className="mt-1 text-sm font-bold text-slate-100">{section.section_number}</div>
+      <div className="text-[0.6rem] text-slate-500">{section.device_count} devices</div>
     </div>
   );
 }
@@ -183,7 +184,7 @@ function SectionGrid({
         <h3 className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em] text-slate-500">
           Lower Tier
         </h3>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
           {lowerTier.map((s) => (
             <SectionCard key={s.section_id} section={s} />
           ))}
@@ -196,7 +197,7 @@ function SectionGrid({
           <h3 className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em] text-slate-500">
             Upper Tier
           </h3>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
             {upperTier.map((s) => (
               <SectionCard key={s.section_id} section={s} />
             ))}
