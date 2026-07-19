@@ -193,12 +193,13 @@ export class CongestionService {
   }
 
   /**
-   * Returns the 20 most recent alerts, newest first.
+   * Returns the 20 most recent unresolved alerts, newest first.
    */
   async getAlerts(): Promise<AlertRow[]> {
     const { data, error } = await this.supabase
       .from('alerts')
       .select('id, section_id, message, severity, created_at, resolved')
+      .eq('resolved', false)
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -207,6 +208,44 @@ export class CongestionService {
     }
 
     return (data ?? []) as AlertRow[];
+  }
+
+  /**
+   * Sets resolved = true on a single alert by ID.
+   * Returns the updated alert row.
+   */
+  async resolveAlert(id: string): Promise<AlertRow> {
+    const { data, error } = await this.supabase
+      .from('alerts')
+      .update({ resolved: true })
+      .eq('id', id)
+      .select('id, section_id, message, severity, created_at, resolved')
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to resolve alert: ${error.message}`);
+    }
+
+    return data as AlertRow;
+  }
+
+  /**
+   * Resolves all unresolved alerts for a given section_id.
+   * Returns the count of resolved alerts.
+   */
+  async bulkResolveBySection(sectionId: string): Promise<{ resolved: number }> {
+    const { data, error } = await this.supabase
+      .from('alerts')
+      .update({ resolved: true })
+      .eq('section_id', sectionId)
+      .eq('resolved', false)
+      .select('id');
+
+    if (error) {
+      throw new Error(`Failed to resolve alerts for section: ${error.message}`);
+    }
+
+    return { resolved: data?.length ?? 0 };
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { CongestionService } from './congestion.service.js';
 import type {
   AlertRow,
@@ -52,10 +52,30 @@ export class CongestionController {
 
   /**
    * GET /alerts
-   * Returns the 20 most recent AI-generated alerts, newest first.
+   * Returns the 20 most recent unresolved AI-generated alerts, newest first.
    */
   @Get('alerts')
   getAlerts(): Promise<AlertRow[]> {
     return this.congestionService.getAlerts();
+  }
+
+  /**
+   * PATCH /alerts/:id/resolve
+   * Sets resolved = true on a single alert and returns the updated row.
+   */
+  @Patch('alerts/:id/resolve')
+  resolveAlert(@Param('id') id: string): Promise<AlertRow> {
+    return this.congestionService.resolveAlert(id);
+  }
+
+  /**
+   * POST /alerts/resolve-by-section/:sectionId
+   * Resolves all unresolved alerts for a given section_id in one call.
+   * Returns the count of resolved alerts.
+   */
+  @Post('alerts/resolve-by-section/:sectionId')
+  @HttpCode(HttpStatus.OK)
+  bulkResolveBySection(@Param('sectionId') sectionId: string): Promise<{ resolved: number }> {
+    return this.congestionService.bulkResolveBySection(sectionId);
   }
 }
