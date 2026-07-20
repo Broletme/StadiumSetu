@@ -309,7 +309,7 @@ function buildSeatInstances(
       const [sx, sz] = bowlPosition(deg, rowScale);
 
       // Face the seat toward the pitch centre
-      const yawRad = -(deg * Math.PI) / 180 + Math.PI / 2;
+      const yawRad = (deg * Math.PI) / 180 + Math.PI / 2;
 
       dummy.position.set(sx, seatY, sz);
       dummy.rotation.set(0, yawRad, 0);
@@ -740,11 +740,10 @@ function Vomitory({ sectionIndex }: { sectionIndex: number }) {
   const vomScale = UPPER_OUTER_SCALE - 0.04;
   const [x, z]  = bowlPosition(deg, vomScale);
 
-  // Rotate to face the centre — for a point at [cos(θ)·rx, sin(θ)·rz],
-  // the tangent-perpendicular (inward normal) has yaw = -(π/2 - θ) = θ - π/2.
-  // In Three.js Y-up, rotating by -(deg in rad) around Y points the mesh outward
-  // when the shape's local +Z is the "front". We negate to flip inward.
-  const yawRad = -(deg * Math.PI) / 180 + Math.PI / 2;
+  // Rotate to face the centre.
+  // bowlPosition places points counterclockwise around the ellipse;
+  // the inward radial direction has yaw = π/2 + deg_in_rad.
+  const yawRad = (deg * Math.PI) / 180 + Math.PI / 2;
 
   return (
     <mesh
@@ -761,7 +760,7 @@ function Vomitory({ sectionIndex }: { sectionIndex: number }) {
 function GateMarker({ gate }: { gate: Gate }) {
   // Use bowlPosition (via gatePosition) — same formula as every other element
   const pos    = gatePosition(gate.angle_deg);
-  const yawRad = -(gate.angle_deg * Math.PI) / 180 + Math.PI / 2;
+  const yawRad = (gate.angle_deg * Math.PI) / 180 + Math.PI / 2;
 
   // ── Alignment diagnostic (checked every render — visible in browser console) ─
   console.log(

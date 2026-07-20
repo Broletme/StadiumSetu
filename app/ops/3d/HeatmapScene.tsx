@@ -179,7 +179,7 @@ function buildSeatInstances(
       const colT = (col + 0.5) / SEATS_PER_ROW;
       const deg = centreDeg - halfSpanDeg + colT * halfSpanDeg * 2;
       const [sx, sz] = bowlPosition(deg, rowScale);
-      const yawRad = -(deg * Math.PI) / 180 + Math.PI / 2;
+      const yawRad = (deg * Math.PI) / 180 + Math.PI / 2;
 
       dummy.position.set(sx, seatY, sz);
       dummy.rotation.set(0, yawRad, 0);
@@ -599,7 +599,7 @@ function ConcourseRing() {
 
 function GateMarker({ gate }: { gate: Gate }) {
   const pos = gatePosition(gate.angle_deg);
-  const yawRad = -(gate.angle_deg * Math.PI) / 180 + Math.PI / 2;
+  const yawRad = (gate.angle_deg * Math.PI) / 180 + Math.PI / 2;
   const archWidth = 1.0;
   const archHeight = 1.4;
   const archDepth = 0.3;
