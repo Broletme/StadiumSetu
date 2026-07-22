@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
@@ -11,6 +11,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const supabase = getSupabaseBrowserClient();
   const [hovered, setHovered] = useState<'seat' | '3d' | 'ops' | null>(null);
+
+  // Mouse parallax state — raw cursor position normalised to [-1, 1]
+  const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  // Ref to track whether reduced-motion is preferred (read once, stable)
+  const reducedMotion = useRef(false);
+  const rafRef = useRef<number>(0);
+  const targetMouse = useRef({ x: 0, y: 0 });
+  const currentMouse = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     supabase.auth.getSession().then((res: any) => {
@@ -23,6 +31,41 @@ export default function DashboardPage() {
       }
     });
   }, [supabase, router]);
+
+  // Set up mouse parallax (respects prefers-reduced-motion)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    reducedMotion.current = mq.matches;
+    if (reducedMotion.current) return; // skip everything for reduced-motion
+
+    const onMove = (e: MouseEvent) => {
+      // Normalise to [-1, 1] relative to viewport centre
+      targetMouse.current = {
+        x: (e.clientX / window.innerWidth  - 0.5) * 2,
+        y: (e.clientY / window.innerHeight - 0.5) * 2,
+      };
+    };
+
+    // Smooth lerp loop so movement feels inertial, not instant
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const tick = () => {
+      const cx = lerp(currentMouse.current.x, targetMouse.current.x, 0.06);
+      const cy = lerp(currentMouse.current.y, targetMouse.current.y, 0.06);
+      if (Math.abs(cx - currentMouse.current.x) > 0.0001 ||
+          Math.abs(cy - currentMouse.current.y) > 0.0001) {
+        currentMouse.current = { x: cx, y: cy };
+        setMouse({ x: cx, y: cy });
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    window.addEventListener('mousemove', onMove, { passive: true });
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -41,6 +84,14 @@ export default function DashboardPage() {
   const firstName = rawName.split(/[ ._]/)[0];
   const displayName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() : '';
 
+  // Parallax offsets — background moves more than foreground card
+  // Background layer: up to ±16px X / ±10px Y
+  const bgX = mouse.x * 16;
+  const bgY = mouse.y * 10;
+  // Card: barely moves — 10% of background shift (depth separation)
+  const cardX = mouse.x * 1.6;
+  const cardY = mouse.y * 1.0;
+
   return (
     <>
       <style>{`
@@ -53,23 +104,71 @@ export default function DashboardPage() {
           40%       { transform: translateY(-4px); }
           70%       { transform: translateY(-2px); }
         }
+
+        /* One-shot floodlight sweep on load */
         @keyframes floodlightSweep {
           0%   { opacity: 0; transform: translateX(-40%) skewX(-10deg); }
           12%  { opacity: 1; }
           75%  { opacity: 0.85; }
           100% { opacity: 0; transform: translateX(80%) skewX(-10deg); }
         }
+
+        /* Stadium rings slow rotation — 75s per full revolution */
+        @keyframes ringRotate {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+
+        /* Floodlight beam sway — gentle angle oscillation */
+        @keyframes beamSwayLeft {
+          0%, 100% { transform: skewX(-14deg) rotate(-2deg); }
+          50%       { transform: skewX(-10deg) rotate(2deg); }
+        }
+        @keyframes beamSwayRight {
+          0%, 100% { transform: skewX(14deg) rotate(2deg); }
+          50%       { transform: skewX(10deg) rotate(-2deg); }
+        }
+
+        /* Bulb glow pulse — soft opacity breathing */
+        @keyframes bulbPulse {
+          0%, 100% { opacity: 0.85; }
+          50%       { opacity: 1; }
+        }
+        @keyframes bulbHaloPulse {
+          0%, 100% { opacity: 0.55; r: 10; }
+          50%       { opacity: 0.9;  r: 13; }
+        }
+
+        /* Apply animations only when reduced-motion is NOT preferred */
         @media (prefers-reduced-motion: no-preference) {
           .db-floodlight-sweep {
             animation: floodlightSweep 3.8s cubic-bezier(0.4, 0, 0.2, 1) 0.3s 1 forwards;
           }
+          .db-rings-group {
+            transform-origin: 400px 340px; /* pivot at approx bowl centre */
+            animation: ringRotate 75s linear infinite;
+          }
+          .db-beam-left {
+            animation: beamSwayLeft 18s ease-in-out infinite;
+          }
+          .db-beam-right {
+            animation: beamSwayRight 22s ease-in-out infinite;
+          }
+          .db-bulb {
+            animation: bulbPulse 4s ease-in-out infinite;
+          }
+          .db-bulb-halo {
+            animation: bulbPulse 4s ease-in-out infinite;
+          }
         }
+
         .db-header  { animation: fadeUp 0.45s ease both; animation-delay: 0ms; }
         .db-welcome { animation: fadeUp 0.45s ease both; animation-delay: 90ms; }
         .db-card-0  { animation: fadeUp 0.45s ease both; animation-delay: 180ms; }
         .db-card-1  { animation: fadeUp 0.45s ease both; animation-delay: 270ms; }
         .db-card-2  { animation: fadeUp 0.45s ease both; animation-delay: 360ms; }
         .db-feature-card:hover .db-card-icon { animation: iconBounce 0.5s ease; }
+
         .db-signout:hover {
           background: rgba(255,255,255,0.08) !important;
           border-color: rgba(255,255,255,0.22) !important;
@@ -81,13 +180,13 @@ export default function DashboardPage() {
           outline-offset: 3px;
           border-radius: 4px;
         }
-        /* gradient text for brand name */
         .db-brand-title {
           background: linear-gradient(105deg, #e2e8f0 0%, #a5b4fc 55%, #8b5cf6 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
         }
+
         @media (max-width: 640px) {
           .db-root { padding: 0 !important; align-items: flex-start !important; }
           .db-outer-card { border-radius: 0 !important; min-height: 100vh !important; }
@@ -105,25 +204,36 @@ export default function DashboardPage() {
       `}</style>
 
       <div style={styles.root} className="db-root" suppressHydrationWarning>
-        <div style={styles.bgLayer} aria-hidden="true">
 
-          {/* Left amber floodlight beam */}
+        {/* ── Background layer — parallax shifts on mouse move ─────────────── */}
+        <div
+          style={{
+            ...styles.bgLayer,
+            transform: `translate(${bgX}px, ${bgY}px)`,
+            transition: 'transform 0.1s linear',
+            willChange: 'transform',
+          }}
+          aria-hidden="true"
+        >
+          {/* Left amber floodlight beam — continuous sway */}
           <div style={{
             position: 'absolute', top: '-8%', left: '-8%',
             width: '65%', height: '110%',
             background: 'linear-gradient(145deg, rgba(251,191,36,0.32) 0%, rgba(251,191,36,0.14) 35%, rgba(251,191,36,0.04) 60%, transparent 78%)',
-            transform: 'skewX(-14deg)', filter: 'blur(28px)', pointerEvents: 'none',
-          }} className="db-beam-side" />
+            filter: 'blur(28px)', pointerEvents: 'none',
+            transformOrigin: '10% 0%',
+          }} className="db-beam-side db-beam-left" />
 
-          {/* Right amber floodlight beam */}
+          {/* Right amber floodlight beam — continuous sway */}
           <div style={{
             position: 'absolute', top: '-8%', right: '-8%',
             width: '60%', height: '110%',
             background: 'linear-gradient(215deg, rgba(251,191,36,0.28) 0%, rgba(251,191,36,0.12) 35%, rgba(251,191,36,0.04) 60%, transparent 78%)',
-            transform: 'skewX(14deg)', filter: 'blur(28px)', pointerEvents: 'none',
-          }} className="db-beam-side" />
+            filter: 'blur(28px)', pointerEvents: 'none',
+            transformOrigin: '90% 0%',
+          }} className="db-beam-side db-beam-right" />
 
-          {/* Animated sweep beam */}
+          {/* One-shot sweep beam on load */}
           <div className="db-floodlight-sweep" style={{
             position: 'absolute', top: '-12%', left: '5%',
             width: '50%', height: '120%',
@@ -136,7 +246,9 @@ export default function DashboardPage() {
             style={{
               position: 'absolute', left: '50%', top: '50%',
               transform: 'translate(-50%, -42%)',
-              width: '140%', maxWidth: '1100px', height: 'auto', pointerEvents: 'none',
+              width: '140%', maxWidth: '1100px', height: 'auto',
+              pointerEvents: 'none',
+              overflow: 'visible',
             }}
             aria-hidden="true">
             <defs>
@@ -159,38 +271,58 @@ export default function DashboardPage() {
                 <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
               </radialGradient>
             </defs>
+
+            {/* Pitch — static, not rotated */}
             <ellipse cx="400" cy="360" rx="175" ry="80" fill="url(#pitchGlow)" />
             <ellipse cx="400" cy="360" rx="155" ry="62" fill="none" stroke="rgba(34,197,94,0.55)" strokeWidth="1.5" />
             <ellipse cx="400" cy="360" rx="38"  ry="18" fill="none" stroke="rgba(34,197,94,0.35)" strokeWidth="1" />
             <line x1="245" y1="360" x2="555" y2="360" stroke="rgba(34,197,94,0.3)" strokeWidth="1" />
-            <ellipse cx="400" cy="356" rx="196" ry="92"  fill="none" stroke="rgba(255,255,255,0.60)" strokeWidth="2" />
-            <ellipse cx="400" cy="350" rx="248" ry="118" fill="none" stroke="rgba(255,255,255,0.48)" strokeWidth="1.8" />
-            <ellipse cx="400" cy="344" rx="302" ry="146" fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="1.5" />
-            <ellipse cx="400" cy="337" rx="358" ry="175" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" className="db-stadium-ring-outer" />
-            <ellipse cx="400" cy="329" rx="416" ry="206" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="1"   className="db-stadium-ring-outer" />
-            <ellipse cx="400" cy="320" rx="476" ry="238" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="1"   className="db-stadium-ring-outer" />
-            <ellipse cx="400" cy="344" rx="302" ry="146" fill="url(#tierFill)" />
+
+            {/* ── Rotating tier rings group ──────────────────────────────── */}
+            <g className="db-rings-group">
+              <ellipse cx="400" cy="356" rx="196" ry="92"  fill="none" stroke="rgba(255,255,255,0.60)" strokeWidth="2" />
+              <ellipse cx="400" cy="350" rx="248" ry="118" fill="none" stroke="rgba(255,255,255,0.48)" strokeWidth="1.8" />
+              <ellipse cx="400" cy="344" rx="302" ry="146" fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="1.5" />
+              <ellipse cx="400" cy="337" rx="358" ry="175" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" className="db-stadium-ring-outer" />
+              <ellipse cx="400" cy="329" rx="416" ry="206" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="1"   className="db-stadium-ring-outer" />
+              <ellipse cx="400" cy="320" rx="476" ry="238" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="1"   className="db-stadium-ring-outer" />
+              <ellipse cx="400" cy="344" rx="302" ry="146" fill="url(#tierFill)" />
+            </g>
+
+            {/* Canopy arc — static */}
             <path d="M 20 290 Q 400 80 780 290"  fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="2" className="db-stadium-ring-outer" />
             <path d="M 55 300 Q 400 112 745 300" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1" className="db-stadium-ring-outer" />
+
+            {/* Left mast */}
             <line x1="72"  y1="72" x2="108" y2="220" stroke="rgba(251,191,36,0.55)" strokeWidth="2.5" />
-            <ellipse cx="72"  cy="68" rx="18" ry="18" fill="url(#mastGlowL)" />
-            <circle cx="72"  cy="72" r="5"  fill="rgba(251,191,36,0.95)" />
-            <circle cx="72"  cy="72" r="10" fill="rgba(251,191,36,0.25)" />
+            <ellipse cx="72"  cy="68" rx="18" ry="18" fill="url(#mastGlowL)" className="db-bulb-halo" />
+            <circle cx="72"  cy="72" r="5"  fill="rgba(251,191,36,0.95)" className="db-bulb" />
+            <circle cx="72"  cy="72" r="10" fill="rgba(251,191,36,0.25)" className="db-bulb-halo" />
             <path d="M 72 72 L 200 310 L 108 280 Z" fill="rgba(251,191,36,0.06)" />
+
+            {/* Right mast */}
             <line x1="728" y1="72" x2="692" y2="220" stroke="rgba(251,191,36,0.55)" strokeWidth="2.5" />
-            <ellipse cx="728" cy="68" rx="18" ry="18" fill="url(#mastGlowR)" />
-            <circle cx="728" cy="72" r="5"  fill="rgba(251,191,36,0.95)" />
-            <circle cx="728" cy="72" r="10" fill="rgba(251,191,36,0.25)" />
+            <ellipse cx="728" cy="68" rx="18" ry="18" fill="url(#mastGlowR)" className="db-bulb-halo" />
+            <circle cx="728" cy="72" r="5"  fill="rgba(251,191,36,0.95)" className="db-bulb" />
+            <circle cx="728" cy="72" r="10" fill="rgba(251,191,36,0.25)" className="db-bulb-halo" />
             <path d="M 728 72 L 600 310 L 692 280 Z" fill="rgba(251,191,36,0.06)" />
           </svg>
         </div>
 
-        <div style={styles.outerCard} className="db-outer-card">
+        {/* ── Glass card — subtle parallax (much less than background) ─────── */}
+        <div
+          style={{
+            ...styles.outerCard,
+            transform: `translate(${cardX}px, ${cardY}px)`,
+            transition: 'transform 0.15s linear',
+            willChange: 'transform',
+          }}
+          className="db-outer-card"
+        >
           <div style={styles.card} className="db-card" suppressHydrationWarning>
 
             <div style={styles.header} className="db-header db-header-row">
               <div style={styles.headerLeft}>
-                {/* Logo icon box */}
                 <div style={styles.logo}>
                   <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
                     <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#dg1)" />
@@ -203,16 +335,11 @@ export default function DashboardPage() {
                     </defs>
                   </svg>
                 </div>
-
-                {/* Brand + user info */}
                 <div style={{ minWidth: 0 }}>
                   <h1 style={styles.title} className="db-brand-title">StadiumSetu</h1>
                   {displayName && (
                     <div style={styles.userRow}>
-                      {/* User initial avatar */}
-                      <div style={styles.avatar} aria-hidden="true">
-                        {displayName.charAt(0)}
-                      </div>
+                      <div style={styles.avatar} aria-hidden="true">{displayName.charAt(0)}</div>
                       <p style={styles.subtitle} className="db-subtitle">
                         <span style={styles.nameHighlight}>{displayName}</span>
                         <span style={styles.statusDot} aria-label="online" />
@@ -225,8 +352,6 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-
-              {/* Sign Out */}
               <button onClick={handleSignOut} style={styles.headerSignOut} className="db-signout">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -331,7 +456,6 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     marginBottom: '2rem',
     paddingBottom: '1.5rem',
-    // Gradient separator: amber tint at left fades to transparent, evoking a light source
     borderBottom: '1px solid transparent',
     backgroundImage: 'linear-gradient(90deg, rgba(251,191,36,0.18) 0%, rgba(255,255,255,0.07) 40%, transparent 100%)',
     backgroundSize: '100% 1px',
@@ -345,8 +469,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '48px', height: '48px',
     background: 'linear-gradient(135deg, rgba(109,112,255,0.20) 0%, rgba(99,102,241,0.10) 60%, rgba(80,84,220,0.16) 100%)',
     border: '1px solid rgba(139,92,246,0.35)',
-    borderRadius: '14px',
-    flexShrink: 0,
+    borderRadius: '14px', flexShrink: 0,
     boxShadow: [
       '0 0 0 1px rgba(99,102,241,0.12)',
       '0 0 12px 3px rgba(99,102,241,0.18)',
@@ -354,79 +477,35 @@ const styles: Record<string, React.CSSProperties> = {
       'inset 0 1px 0 rgba(180,182,255,0.18)',
     ].join(', '),
   },
-  // Brand title — styled via .db-brand-title CSS class (gradient text)
   title: {
-    fontSize: '1.2rem',
-    fontWeight: 800,
-    letterSpacing: '-0.01em',
-    margin: '0 0 0.25rem',
-    whiteSpace: 'nowrap',
-    color: '#e2e8f0', // fallback for browsers that don't support gradient text
+    fontSize: '1.2rem', fontWeight: 800, letterSpacing: '-0.01em',
+    margin: '0 0 0.25rem', whiteSpace: 'nowrap', color: '#e2e8f0',
   },
-  // Compact row: avatar + name + status dot
-  userRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  // User initial badge
+  userRow: { display: 'flex', alignItems: 'center', gap: '0.5rem' },
   avatar: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '18px',
-    height: '18px',
-    borderRadius: '50%',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: '18px', height: '18px', borderRadius: '50%',
     background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-    color: '#fff',
-    fontSize: '0.6rem',
-    fontWeight: 700,
-    letterSpacing: '0',
-    flexShrink: 0,
-    boxShadow: '0 0 6px rgba(99,102,241,0.45)',
+    color: '#fff', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0',
+    flexShrink: 0, boxShadow: '0 0 6px rgba(99,102,241,0.45)',
   },
   subtitle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.35rem',
-    fontSize: '0.8rem',
-    color: '#64748b',
-    margin: 0,
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
+    display: 'flex', alignItems: 'center', gap: '0.35rem',
+    fontSize: '0.8rem', color: '#64748b', margin: 0,
+    overflow: 'hidden', whiteSpace: 'nowrap',
   },
   nameHighlight: { color: '#c4b5fd', fontWeight: 600 },
   statusDot: {
-    display: 'inline-block',
-    width: '5px',
-    height: '5px',
-    borderRadius: '50%',
-    background: '#22c55e',
-    flexShrink: 0,
-    boxShadow: '0 0 4px rgba(34,197,94,0.7)',
+    display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%',
+    background: '#22c55e', flexShrink: 0, boxShadow: '0 0 4px rgba(34,197,94,0.7)',
   },
-  statusText: {
-    fontSize: '0.7rem',
-    color: '#4ade80',
-    fontWeight: 500,
-    letterSpacing: '0.04em',
-  },
+  statusText: { fontSize: '0.7rem', color: '#4ade80', fontWeight: 500, letterSpacing: '0.04em' },
   headerSignOut: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.4rem',
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.10)',
-    borderRadius: '8px',
-    color: '#94a3b8',
-    padding: '0.4rem 0.75rem',
-    fontSize: '0.73rem',
-    fontWeight: 500,
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    flexShrink: 0,
-    whiteSpace: 'nowrap',
-    letterSpacing: '0.02em',
+    display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: '8px', color: '#94a3b8', padding: '0.4rem 0.75rem',
+    fontSize: '0.73rem', fontWeight: 500, cursor: 'pointer',
+    transition: 'all 0.2s ease', flexShrink: 0, whiteSpace: 'nowrap', letterSpacing: '0.02em',
   },
   eyebrow: {
     fontFamily: 'var(--font-geist-mono), "Geist Mono", monospace',
