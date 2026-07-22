@@ -307,8 +307,19 @@ const styles: Record<string, React.CSSProperties> = {
   logo: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     width: '48px', height: '48px',
-    background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)',
-    borderRadius: '14px', flexShrink: 0,
+    // Diagonal gradient: slightly darker at bottom-right, lighter at top-left
+    background: 'linear-gradient(135deg, rgba(109,112,255,0.20) 0%, rgba(99,102,241,0.10) 60%, rgba(80,84,220,0.16) 100%)',
+    // Border: semi-transparent lighter purple on top/left to simulate caught light
+    border: '1px solid rgba(139,92,246,0.35)',
+    borderRadius: '14px',
+    flexShrink: 0,
+    // Layered shadows: outer violet glow + tight inner highlight ring
+    boxShadow: [
+      '0 0 0 1px rgba(99,102,241,0.12)',          // tight inner ring
+      '0 0 12px 3px rgba(99,102,241,0.18)',        // close soft glow
+      '0 0 28px 6px rgba(139,92,246,0.10)',        // wider violet bloom
+      'inset 0 1px 0 rgba(180,182,255,0.18)',      // top-edge inner highlight (light catch)
+    ].join(', '),
   },
   title: { fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9', margin: '0 0 0.2rem', whiteSpace: 'nowrap' },
   subtitle: { fontSize: '0.8125rem', color: '#64748b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' },
