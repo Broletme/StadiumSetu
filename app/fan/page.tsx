@@ -36,6 +36,7 @@ export default function FanPage() {
   const [messages, setMessages] = useState<Message[]>([GREETING]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [slowServerNotice, setSlowServerNotice] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -91,6 +92,11 @@ export default function FanPage() {
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+    setSlowServerNotice(false);
+
+    const warmTimer = setTimeout(() => {
+      setSlowServerNotice(true);
+    }, 3500);
 
     try {
       const supabase = getSupabaseBrowserClient();
@@ -132,6 +138,8 @@ export default function FanPage() {
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
+      clearTimeout(warmTimer);
+      setSlowServerNotice(false);
       setLoading(false);
       inputRef.current?.focus();
     }
@@ -273,12 +281,17 @@ export default function FanPage() {
 
             {/* Typing / loading indicator */}
             {loading && (
-              <div className="fan-msg" style={{ ...styles.messageRow, justifyContent: 'flex-start' }}>
+              <div className="fan-msg" style={{ ...styles.messageRow, justifyContent: 'flex-start', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
                 <div style={styles.assistantBubble}>
                   <span className="fan-dot" />
                   <span className="fan-dot" />
                   <span className="fan-dot" />
                 </div>
+                {slowServerNotice && (
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', paddingLeft: '4px' }}>
+                    Waking up the server, please wait…
+                  </span>
+                )}
               </div>
             )}
 

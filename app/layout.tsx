@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { WarmupPing } from "@/components/WarmupPing";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -68,7 +69,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>{children}</body>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <WarmupPing />
+        {children}
+      </body>
     </html>
   );
 }
