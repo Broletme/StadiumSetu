@@ -71,14 +71,22 @@ export default function DashboardPage() {
         .db-card-2  { animation: fadeUp 0.45s ease both; animation-delay: 360ms; }
         .db-feature-card:hover .db-card-icon { animation: iconBounce 0.5s ease; }
         .db-signout:hover {
-          background: rgba(255,255,255,0.07) !important;
-          border-color: rgba(255,255,255,0.18) !important;
-          color: #e2e8f0 !important;
+          background: rgba(255,255,255,0.08) !important;
+          border-color: rgba(255,255,255,0.22) !important;
+          color: #f1f5f9 !important;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.3) !important;
         }
         .db-signout:focus-visible, a:focus-visible {
           outline: 2px solid #fbbf24;
           outline-offset: 3px;
           border-radius: 4px;
+        }
+        /* gradient text for brand name */
+        .db-brand-title {
+          background: linear-gradient(105deg, #e2e8f0 0%, #a5b4fc 55%, #8b5cf6 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
         @media (max-width: 640px) {
           .db-root { padding: 0 !important; align-items: flex-start !important; }
@@ -182,6 +190,7 @@ export default function DashboardPage() {
 
             <div style={styles.header} className="db-header db-header-row">
               <div style={styles.headerLeft}>
+                {/* Logo icon box */}
                 <div style={styles.logo}>
                   <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
                     <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#dg1)" />
@@ -194,14 +203,36 @@ export default function DashboardPage() {
                     </defs>
                   </svg>
                 </div>
-                <div>
-                  <h1 style={styles.title}>StadiumSetu</h1>
-                  <p style={styles.subtitle} className="db-subtitle">
-                    Welcome back{displayName ? <>, <span style={styles.nameHighlight}>{displayName}</span></> : ''}
-                  </p>
+
+                {/* Brand + user info */}
+                <div style={{ minWidth: 0 }}>
+                  <h1 style={styles.title} className="db-brand-title">StadiumSetu</h1>
+                  {displayName && (
+                    <div style={styles.userRow}>
+                      {/* User initial avatar */}
+                      <div style={styles.avatar} aria-hidden="true">
+                        {displayName.charAt(0)}
+                      </div>
+                      <p style={styles.subtitle} className="db-subtitle">
+                        <span style={styles.nameHighlight}>{displayName}</span>
+                        <span style={styles.statusDot} aria-label="online" />
+                        <span style={styles.statusText}>online</span>
+                      </p>
+                    </div>
+                  )}
+                  {!displayName && (
+                    <p style={styles.subtitle} className="db-subtitle">Welcome back</p>
+                  )}
                 </div>
               </div>
+
+              {/* Sign Out */}
               <button onClick={handleSignOut} style={styles.headerSignOut} className="db-signout">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
                 Sign Out
               </button>
             </div>
@@ -300,35 +331,102 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     marginBottom: '2rem',
     paddingBottom: '1.5rem',
-    borderBottom: '1px solid rgba(255,255,255,0.08)',
+    // Gradient separator: amber tint at left fades to transparent, evoking a light source
+    borderBottom: '1px solid transparent',
+    backgroundImage: 'linear-gradient(90deg, rgba(251,191,36,0.18) 0%, rgba(255,255,255,0.07) 40%, transparent 100%)',
+    backgroundSize: '100% 1px',
+    backgroundPosition: '0 100%',
+    backgroundRepeat: 'no-repeat',
     gap: '0.75rem',
   },
   headerLeft: { display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0, flex: 1 },
   logo: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     width: '48px', height: '48px',
-    // Diagonal gradient: slightly darker at bottom-right, lighter at top-left
     background: 'linear-gradient(135deg, rgba(109,112,255,0.20) 0%, rgba(99,102,241,0.10) 60%, rgba(80,84,220,0.16) 100%)',
-    // Border: semi-transparent lighter purple on top/left to simulate caught light
     border: '1px solid rgba(139,92,246,0.35)',
     borderRadius: '14px',
     flexShrink: 0,
-    // Layered shadows: outer violet glow + tight inner highlight ring
     boxShadow: [
-      '0 0 0 1px rgba(99,102,241,0.12)',          // tight inner ring
-      '0 0 12px 3px rgba(99,102,241,0.18)',        // close soft glow
-      '0 0 28px 6px rgba(139,92,246,0.10)',        // wider violet bloom
-      'inset 0 1px 0 rgba(180,182,255,0.18)',      // top-edge inner highlight (light catch)
+      '0 0 0 1px rgba(99,102,241,0.12)',
+      '0 0 12px 3px rgba(99,102,241,0.18)',
+      '0 0 28px 6px rgba(139,92,246,0.10)',
+      'inset 0 1px 0 rgba(180,182,255,0.18)',
     ].join(', '),
   },
-  title: { fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9', margin: '0 0 0.2rem', whiteSpace: 'nowrap' },
-  subtitle: { fontSize: '0.8125rem', color: '#64748b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' },
-  nameHighlight: { color: '#e2e8f0', fontWeight: 600, fontSize: '0.95rem' },
+  // Brand title — styled via .db-brand-title CSS class (gradient text)
+  title: {
+    fontSize: '1.2rem',
+    fontWeight: 800,
+    letterSpacing: '-0.01em',
+    margin: '0 0 0.25rem',
+    whiteSpace: 'nowrap',
+    color: '#e2e8f0', // fallback for browsers that don't support gradient text
+  },
+  // Compact row: avatar + name + status dot
+  userRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  // User initial badge
+  avatar: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+    color: '#fff',
+    fontSize: '0.6rem',
+    fontWeight: 700,
+    letterSpacing: '0',
+    flexShrink: 0,
+    boxShadow: '0 0 6px rgba(99,102,241,0.45)',
+  },
+  subtitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.35rem',
+    fontSize: '0.8rem',
+    color: '#64748b',
+    margin: 0,
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+  },
+  nameHighlight: { color: '#c4b5fd', fontWeight: 600 },
+  statusDot: {
+    display: 'inline-block',
+    width: '5px',
+    height: '5px',
+    borderRadius: '50%',
+    background: '#22c55e',
+    flexShrink: 0,
+    boxShadow: '0 0 4px rgba(34,197,94,0.7)',
+  },
+  statusText: {
+    fontSize: '0.7rem',
+    color: '#4ade80',
+    fontWeight: 500,
+    letterSpacing: '0.04em',
+  },
   headerSignOut: {
-    background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '8px', color: '#94a3b8', padding: '0.4rem 0.8rem',
-    fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer',
-    transition: 'all 0.2s ease', flexShrink: 0, whiteSpace: 'nowrap',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: '8px',
+    color: '#94a3b8',
+    padding: '0.4rem 0.75rem',
+    fontSize: '0.73rem',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    letterSpacing: '0.02em',
   },
   eyebrow: {
     fontFamily: 'var(--font-geist-mono), "Geist Mono", monospace',
