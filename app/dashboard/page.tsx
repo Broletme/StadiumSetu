@@ -97,8 +97,6 @@ export default function DashboardPage() {
       `}</style>
 
       <div style={styles.root} className="db-root" suppressHydrationWarning>
-
-        {/* Background layer */}
         <div style={styles.bgLayer} aria-hidden="true">
 
           {/* Left amber floodlight beam */}
@@ -117,7 +115,7 @@ export default function DashboardPage() {
             transform: 'skewX(14deg)', filter: 'blur(28px)', pointerEvents: 'none',
           }} className="db-beam-side" />
 
-          {/* Animated sweep beam ó single pass on load */}
+          {/* Animated sweep beam */}
           <div className="db-floodlight-sweep" style={{
             position: 'absolute', top: '-12%', left: '5%',
             width: '50%', height: '120%',
@@ -125,18 +123,14 @@ export default function DashboardPage() {
             filter: 'blur(22px)', opacity: 0, willChange: 'transform, opacity', pointerEvents: 'none',
           }} />
 
-          {/* Stadium bowl SVG ó oversized, centered behind card so rings emerge around it */}
-          <svg
-            viewBox="0 0 800 600"
-            xmlns="http://www.w3.org/2000/svg"
+          {/* Stadium bowl SVG */}
+          <svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg"
             style={{
               position: 'absolute', left: '50%', top: '50%',
               transform: 'translate(-50%, -42%)',
-              width: '140%', maxWidth: '1100px', height: 'auto',
-              pointerEvents: 'none',
+              width: '140%', maxWidth: '1100px', height: 'auto', pointerEvents: 'none',
             }}
-            aria-hidden="true"
-          >
+            aria-hidden="true">
             <defs>
               <radialGradient id="pitchGlow" cx="50%" cy="58%" r="30%">
                 <stop offset="0%"   stopColor="#22c55e" stopOpacity="0.35" />
@@ -157,39 +151,24 @@ export default function DashboardPage() {
                 <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
               </radialGradient>
             </defs>
-
-            {/* Green pitch glow */}
             <ellipse cx="400" cy="360" rx="175" ry="80" fill="url(#pitchGlow)" />
-            {/* Pitch outline */}
             <ellipse cx="400" cy="360" rx="155" ry="62" fill="none" stroke="rgba(34,197,94,0.55)" strokeWidth="1.5" />
-            {/* Centre circle */}
-            <ellipse cx="400" cy="360" rx="38" ry="18" fill="none" stroke="rgba(34,197,94,0.35)" strokeWidth="1" />
-            {/* Halfway line */}
+            <ellipse cx="400" cy="360" rx="38"  ry="18" fill="none" stroke="rgba(34,197,94,0.35)" strokeWidth="1" />
             <line x1="245" y1="360" x2="555" y2="360" stroke="rgba(34,197,94,0.3)" strokeWidth="1" />
-
-            {/* Seating tier rings ó crisp, no blur, clearly readable */}
             <ellipse cx="400" cy="356" rx="196" ry="92"  fill="none" stroke="rgba(255,255,255,0.60)" strokeWidth="2" />
             <ellipse cx="400" cy="350" rx="248" ry="118" fill="none" stroke="rgba(255,255,255,0.48)" strokeWidth="1.8" />
             <ellipse cx="400" cy="344" rx="302" ry="146" fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="1.5" />
             <ellipse cx="400" cy="337" rx="358" ry="175" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" className="db-stadium-ring-outer" />
             <ellipse cx="400" cy="329" rx="416" ry="206" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="1"   className="db-stadium-ring-outer" />
             <ellipse cx="400" cy="320" rx="476" ry="238" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="1"   className="db-stadium-ring-outer" />
-
-            {/* Stand volume fill */}
             <ellipse cx="400" cy="344" rx="302" ry="146" fill="url(#tierFill)" />
-
-            {/* Roof canopy arc */}
-            <path d="M 20 290 Q 400 80 780 290"  fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="2"   className="db-stadium-ring-outer" />
-            <path d="M 55 300 Q 400 112 745 300" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1"   className="db-stadium-ring-outer" />
-
-            {/* Left floodlight mast */}
-            <line x1="72" y1="72" x2="108" y2="220" stroke="rgba(251,191,36,0.55)" strokeWidth="2.5" />
-            <ellipse cx="72" cy="68" rx="18" ry="18" fill="url(#mastGlowL)" />
-            <circle cx="72" cy="72" r="5"  fill="rgba(251,191,36,0.95)" />
-            <circle cx="72" cy="72" r="10" fill="rgba(251,191,36,0.25)" />
+            <path d="M 20 290 Q 400 80 780 290"  fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="2" className="db-stadium-ring-outer" />
+            <path d="M 55 300 Q 400 112 745 300" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1" className="db-stadium-ring-outer" />
+            <line x1="72"  y1="72" x2="108" y2="220" stroke="rgba(251,191,36,0.55)" strokeWidth="2.5" />
+            <ellipse cx="72"  cy="68" rx="18" ry="18" fill="url(#mastGlowL)" />
+            <circle cx="72"  cy="72" r="5"  fill="rgba(251,191,36,0.95)" />
+            <circle cx="72"  cy="72" r="10" fill="rgba(251,191,36,0.25)" />
             <path d="M 72 72 L 200 310 L 108 280 Z" fill="rgba(251,191,36,0.06)" />
-
-            {/* Right floodlight mast */}
             <line x1="728" y1="72" x2="692" y2="220" stroke="rgba(251,191,36,0.55)" strokeWidth="2.5" />
             <ellipse cx="728" cy="68" rx="18" ry="18" fill="url(#mastGlowR)" />
             <circle cx="728" cy="72" r="5"  fill="rgba(251,191,36,0.95)" />
@@ -198,11 +177,9 @@ export default function DashboardPage() {
           </svg>
         </div>
 
-        {/* Glass card ó sits inside the stadium bowl */}
         <div style={styles.outerCard} className="db-outer-card">
           <div style={styles.card} className="db-card" suppressHydrationWarning>
 
-            {/* Header */}
             <div style={styles.header} className="db-header db-header-row">
               <div style={styles.headerLeft}>
                 <div style={styles.logo}>
@@ -229,23 +206,23 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Welcome section */}
             <div style={styles.welcomeSection} className="db-welcome">
-              <p style={styles.eyebrow}>LIVE ∑ FIFA WORLD CUP 2026</p>
+              <p style={styles.eyebrow}>LIVE ¬∑ FIFA WORLD CUP 2026</p>
               <h2 style={styles.welcomeTitle} className="db-welcome-title">Find your way around the stadium</h2>
               <p style={styles.welcomeDesc} className="db-welcome-desc">
                 Navigate seating, gates, and facilities across FIFA World Cup 2026 venues with our interactive fan and operations tools.
               </p>
             </div>
 
-            {/* Feature cards */}
             <div style={styles.grid}>
               <div className="db-card-0">
                 <Link href="/fan" style={styles.cardLink}
                   onMouseEnter={() => setHovered('seat')}
                   onMouseLeave={() => setHovered(null)}>
                   <div style={{ ...styles.featureCard, ...(hovered === 'seat' ? styles.featureCardHovered : {}) }} className="db-feature-card">
-                    <h3 style={styles.featureTitle} className="db-feature-title"><span className="db-card-icon">??</span> Find My Seat</h3>
+                    <h3 style={styles.featureTitle} className="db-feature-title">
+                      <span className="db-card-icon">üîç</span> Find My Seat
+                    </h3>
                     <p style={styles.featureDesc}>Look up your section and find the nearest gate</p>
                   </div>
                 </Link>
@@ -255,7 +232,9 @@ export default function DashboardPage() {
                   onMouseEnter={() => setHovered('3d')}
                   onMouseLeave={() => setHovered(null)}>
                   <div style={{ ...styles.featureCard, ...(hovered === '3d' ? styles.featureCardHovered : {}) }} className="db-feature-card">
-                    <h3 style={styles.featureTitle} className="db-feature-title"><span className="db-card-icon">???</span> 3D Stadium View</h3>
+                    <h3 style={styles.featureTitle} className="db-feature-title">
+                      <span className="db-card-icon">üèüÔ∏è</span> 3D Stadium View
+                    </h3>
                     <p style={styles.featureDesc}>See your seat location in an interactive 3D stadium</p>
                   </div>
                 </Link>
@@ -265,7 +244,9 @@ export default function DashboardPage() {
                   onMouseEnter={() => setHovered('ops')}
                   onMouseLeave={() => setHovered(null)}>
                   <div style={{ ...styles.featureCard, ...(hovered === 'ops' ? styles.featureCardHovered : {}) }} className="db-feature-card">
-                    <h3 style={styles.featureTitle} className="db-feature-title"><span className="db-card-icon">??</span> Operations</h3>
+                    <h3 style={styles.featureTitle} className="db-feature-title">
+                      <span className="db-card-icon">‚öôÔ∏è</span> Operations
+                    </h3>
                     <p style={styles.featureDesc}>Live heatmap, real-time alerts, and crowd spike simulation</p>
                   </div>
                 </Link>
@@ -312,11 +293,7 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: '0 0 0 1px rgba(255,255,255,0.06), 0 0 40px 8px rgba(251,191,36,0.14), 0 0 80px 20px rgba(251,191,36,0.07), 0 24px 80px rgba(0,0,0,0.7)',
     boxSizing: 'border-box',
   },
-  card: {
-    width: '100%',
-    padding: '2rem',
-    boxSizing: 'border-box',
-  },
+  card: { width: '100%', padding: '2rem', boxSizing: 'border-box' },
   header: {
     display: 'flex',
     alignItems: 'center',
@@ -326,116 +303,43 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '1px solid rgba(255,255,255,0.08)',
     gap: '0.75rem',
   },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-    minWidth: 0,
-    flex: 1,
-  },
+  headerLeft: { display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0, flex: 1 },
   logo: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '48px',
-    height: '48px',
-    background: 'rgba(99,102,241,0.12)',
-    border: '1px solid rgba(99,102,241,0.25)',
-    borderRadius: '14px',
-    flexShrink: 0,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: '48px', height: '48px',
+    background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)',
+    borderRadius: '14px', flexShrink: 0,
   },
-  title: {
-    fontSize: '1.25rem',
-    fontWeight: 700,
-    color: '#f1f5f9',
-    margin: '0 0 0.2rem',
-    whiteSpace: 'nowrap',
-  },
-  subtitle: {
-    fontSize: '0.8125rem',
-    color: '#64748b',
-    margin: 0,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    maxWidth: '220px',
-  },
-  nameHighlight: {
-    color: '#e2e8f0',
-    fontWeight: 600,
-    fontSize: '0.95rem',
-  },
+  title: { fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9', margin: '0 0 0.2rem', whiteSpace: 'nowrap' },
+  subtitle: { fontSize: '0.8125rem', color: '#64748b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' },
+  nameHighlight: { color: '#e2e8f0', fontWeight: 600, fontSize: '0.95rem' },
   headerSignOut: {
-    background: 'transparent',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '8px',
-    color: '#94a3b8',
-    padding: '0.4rem 0.8rem',
-    fontSize: '0.75rem',
-    fontWeight: 500,
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    flexShrink: 0,
-    whiteSpace: 'nowrap',
+    background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '8px', color: '#94a3b8', padding: '0.4rem 0.8rem',
+    fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer',
+    transition: 'all 0.2s ease', flexShrink: 0, whiteSpace: 'nowrap',
   },
   eyebrow: {
     fontFamily: 'var(--font-geist-mono), "Geist Mono", monospace',
-    fontSize: '0.7rem',
-    fontWeight: 600,
-    letterSpacing: '0.18em',
-    textTransform: 'uppercase' as const,
-    color: '#fbbf24',
-    margin: '0 0 0.6rem',
+    fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.18em',
+    textTransform: 'uppercase' as const, color: '#fbbf24', margin: '0 0 0.6rem',
   },
   welcomeSection: { marginBottom: '2rem' },
-  welcomeTitle: {
-    fontSize: '1.15rem',
-    fontWeight: 600,
-    color: '#e2e8f0',
-    margin: '0 0 0.5rem',
-  },
-  welcomeDesc: {
-    fontSize: '0.9rem',
-    lineHeight: 1.5,
-    color: '#94a3b8',
-    margin: 0,
-  },
-  grid: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '1rem',
-  },
-  cardLink: {
-    textDecoration: 'none',
-    color: 'inherit',
-    display: 'block',
-  },
+  welcomeTitle: { fontSize: '1.15rem', fontWeight: 600, color: '#e2e8f0', margin: '0 0 0.5rem' },
+  welcomeDesc: { fontSize: '0.9rem', lineHeight: 1.5, color: '#94a3b8', margin: 0 },
+  grid: { display: 'flex', flexDirection: 'column' as const, gap: '1rem' },
+  cardLink: { textDecoration: 'none', color: 'inherit', display: 'block' },
   featureCard: {
-    background: 'rgba(255,255,255,0.025)',
-    border: '1px solid rgba(255,255,255,0.07)',
-    borderLeft: '3px solid transparent',
-    borderRadius: '12px',
-    padding: '1.25rem',
+    background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)',
+    borderLeft: '3px solid transparent', borderRadius: '12px', padding: '1.25rem',
     transition: 'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
     cursor: 'pointer',
   },
   featureCardHovered: {
-    transform: 'scale(1.02)',
-    background: 'rgba(22,163,74,0.06)',
-    border: '1px solid rgba(22,163,74,0.28)',
-    borderLeft: '3px solid #16a34a',
+    transform: 'scale(1.02)', background: 'rgba(22,163,74,0.06)',
+    border: '1px solid rgba(22,163,74,0.28)', borderLeft: '3px solid #16a34a',
     boxShadow: '0 0 0 1px rgba(22,163,74,0.14), 0 8px 32px rgba(22,163,74,0.12)',
   },
-  featureTitle: {
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: '#f8fafc',
-    margin: '0 0 0.4rem',
-  },
-  featureDesc: {
-    fontSize: '0.85rem',
-    color: '#64748b',
-    margin: 0,
-    lineHeight: 1.4,
-  },
+  featureTitle: { fontSize: '1rem', fontWeight: 600, color: '#f8fafc', margin: '0 0 0.4rem' },
+  featureDesc: { fontSize: '0.85rem', color: '#64748b', margin: 0, lineHeight: 1.4 },
 };
