@@ -390,7 +390,7 @@ export default function DashboardPage() {
           style={{
             position: 'absolute',
             top: 'calc(50% - 260px)',
-            right: 'calc(50% - 380px)',
+            left: 'calc(50% - 380px)',
             zIndex: 1,
             userSelect: 'none',
             WebkitUserSelect: 'none',
