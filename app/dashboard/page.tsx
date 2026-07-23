@@ -226,7 +226,7 @@ export default function DashboardPage() {
 
         .db-two-col {
           display: flex; flex-direction: row; align-items: center;
-          gap: 4rem; width: 100%; max-width: 1100px;
+          gap: 5rem; width: 100%; max-width: 1180px;
           padding: 2.5rem 2rem; box-sizing: border-box; position: relative; z-index: 1;
         }
         .db-hero-col {
@@ -392,16 +392,13 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Glass box backdrop around hero text to ensure crisp contrast over background */}
-            <div style={styles.heroGlassBox}>
-              <p style={styles.heroEyebrow}>LIVE · FIFA WORLD CUP 2026</p>
-              <h1 style={styles.heroHeadline}>
-                Find your way<br />around the stadium
-              </h1>
-              <p style={styles.heroDesc}>
-                Your AI-powered companion for FIFA World Cup 2026. Get turn-by-turn <span style={styles.highlightGold}>gate-to-seat directions</span>, explore interactive <span style={styles.highlightWhite}>3D stadium seating</span>, and access real-time <span style={styles.highlightGold}>crowd operations tools</span>.
-              </p>
-            </div>
+            <p style={styles.heroEyebrow}>LIVE · FIFA WORLD CUP 2026</p>
+            <h1 style={styles.heroHeadline}>
+              Find your way<br />around the stadium
+            </h1>
+            <p style={styles.heroDesc}>
+              Your AI-powered companion for FIFA World Cup 2026. Get turn-by-turn <span style={styles.highlightGold}>gate-to-seat directions</span>, explore interactive <span style={styles.highlightWhite}>3D stadium seating</span>, and access real-time <span style={styles.highlightGold}>crowd operations tools</span>.
+            </p>
           </div>
 
           {/* RIGHT: feature card */}
@@ -505,15 +502,6 @@ const styles: Record<string, React.CSSProperties> = {
   bgLayer: {
     position: 'absolute', top: '-60px', bottom: '-60px', left: '-60px', right: '-60px',
     pointerEvents: 'none', zIndex: 0, overflow: 'hidden', willChange: 'transform',
-  },
-  heroGlassBox: {
-    background: 'rgba(10, 14, 26, 0.65)',
-    backdropFilter: 'blur(16px)',
-    WebkitBackdropFilter: 'blur(16px)',
-    border: '1px solid rgba(251, 191, 36, 0.18)',
-    borderRadius: '20px',
-    padding: '2rem',
-    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
   },
   heroEyebrow: {
     fontFamily: 'var(--font-geist-mono), "Geist Mono", monospace',
