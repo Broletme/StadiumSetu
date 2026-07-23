@@ -63,13 +63,9 @@ export default function DashboardPage() {
       const cy = lerp(cur.current.y, tgt.current.y, 0.07);
       cur.current = { x: cx, y: cy };
 
-      // Background parallax — moves more than card (depth illusion)
+      // Background parallax — subtle translation for depth (oversized bgLayer prevents any edge gaps)
       if (bgLayerRef.current)
-        bgLayerRef.current.style.transform = 'translate(' + (cx * 30).toFixed(1) + 'px, ' + (cy * 18).toFixed(1) + 'px)';
-
-      // Card — barely moves (10% of bg), reinforces depth plane separation
-      if (outerCardRef.current)
-        outerCardRef.current.style.transform = 'translate(' + (cx * 3).toFixed(1) + 'px, ' + (cy * 1.8).toFixed(1) + 'px)';
+        bgLayerRef.current.style.transform = 'translate(' + (cx * 25).toFixed(1) + 'px, ' + (cy * 15).toFixed(1) + 'px)';
 
       // Ambient sway — slow sinusoidal oscillation (~12s period) layered on top of cursor tracking
       // Left and right beams sway gently out of phase with each other for a natural feel
@@ -475,7 +471,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   bgLayer: {
     position: 'absolute',
-    inset: 0,
+    top: '-60px',
+    bottom: '-60px',
+    left: '-60px',
+    right: '-60px',
     pointerEvents: 'none',
     zIndex: 0,
     overflow: 'hidden',
