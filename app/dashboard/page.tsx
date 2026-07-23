@@ -146,10 +146,7 @@ export default function DashboardPage() {
           75%  { opacity: 0.85; }
           100% { opacity: 0; transform: translateX(80%) skewX(-10deg); }
         }
-        @keyframes ringRotate {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
+
         @keyframes bulbPulse {
           0%, 100% { opacity: 0.85; }
           50%       { opacity: 1; }
@@ -168,10 +165,6 @@ export default function DashboardPage() {
         @media (prefers-reduced-motion: no-preference) {
           .db-floodlight-sweep {
             animation: floodlightSweep 3.8s cubic-bezier(0.4,0,0.2,1) 0.3s 1 forwards;
-          }
-          .db-rings-group {
-            transform-origin: 400px 340px;
-            animation: ringRotate 75s linear infinite;
           }
           .db-bulb      { animation: bulbPulse 4s ease-in-out infinite; }
           .db-bulb-halo { animation: bulbPulse 4s ease-in-out infinite; }
