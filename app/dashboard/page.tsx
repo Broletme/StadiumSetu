@@ -14,6 +14,15 @@ export default function DashboardPage() {
   const supabase = getSupabaseBrowserClient();
   const [hovered, setHovered] = useState<'seat' | '3d' | 'ops' | null>(null);
   const [ripples, setRipples] = useState<Ripple[]>([]);
+  const [fbHovered, setFbHovered] = useState(false);
+  const [fbSpinning, setFbSpinning] = useState(false);
+
+  const handleFbClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation(); // don't trigger page ripple
+    if (fbSpinning) return;
+    setFbSpinning(true);
+    setTimeout(() => setFbSpinning(false), 620);
+  }, [fbSpinning]);
 
   // DOM refs — animation drives these directly, no React re-renders
   const rootRef      = useRef<HTMLDivElement>(null);
@@ -142,7 +151,6 @@ export default function DashboardPage() {
           75%  { opacity: 0.85; }
           100% { opacity: 0; transform: translateX(80%) skewX(-10deg); }
         }
-
         @keyframes bulbPulse {
           0%, 100% { opacity: 0.85; }
           50%       { opacity: 1; }
@@ -156,6 +164,38 @@ export default function DashboardPage() {
         @keyframes flashFade {
           0%   { opacity: 1; transform: scale(0.5); }
           100% { opacity: 0; transform: scale(3); }
+        }
+        /* Football animations */
+        @keyframes fbFloat {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50%       { transform: translateY(-7px) rotate(4deg); }
+        }
+        @keyframes fbBounce {
+          0%   { transform: translateY(0) scaleX(1) scaleY(1); }
+          20%  { transform: translateY(-14px) scaleX(0.92) scaleY(1.08); }
+          40%  { transform: translateY(-20px) scaleX(0.95) scaleY(1.05); }
+          60%  { transform: translateY(-8px) scaleX(1.05) scaleY(0.96); }
+          75%  { transform: translateY(0px) scaleX(1.08) scaleY(0.94); }
+          88%  { transform: translateY(-4px) scaleX(0.98) scaleY(1.02); }
+          100% { transform: translateY(0) scaleX(1) scaleY(1); }
+        }
+        @keyframes fbSpin {
+          0%   { transform: rotate(0deg) scale(1); }
+          15%  { transform: rotate(90deg) scale(1.08); }
+          50%  { transform: rotate(200deg) scale(1.04); }
+          80%  { transform: rotate(330deg) scale(1.02); }
+          100% { transform: rotate(360deg) scale(1); }
+        }
+        @keyframes fbShadowBounce {
+          0%, 100% { transform: scaleX(1); opacity: 0.45; }
+          40%       { transform: scaleX(0.65); opacity: 0.2; }
+          75%       { transform: scaleX(1.15); opacity: 0.55; }
+        }
+        @keyframes fbShadowSpin {
+          0%, 100% { transform: scaleX(1);    opacity: 0.45; }
+          25%       { transform: scaleX(0.7);  opacity: 0.25; }
+          50%       { transform: scaleX(0.5);  opacity: 0.15; }
+          75%       { transform: scaleX(0.7);  opacity: 0.25; }
         }
 
         @media (prefers-reduced-motion: no-preference) {
@@ -180,6 +220,13 @@ export default function DashboardPage() {
             animation: flashFade 0.45s ease-out forwards;
             transform-origin: 0 0;
           }
+          /* Football idle/interaction states */
+          .db-football-idle   { animation: fbFloat 5s ease-in-out infinite; }
+          .db-football-bounce { animation: fbBounce 400ms cubic-bezier(0.36,0.07,0.19,0.97) both; }
+          .db-football-spin   { animation: fbSpin 580ms cubic-bezier(0.25,0.46,0.45,0.94) both; }
+          .db-fb-shadow-idle   { animation: fbFloat 5s ease-in-out infinite; }
+          .db-fb-shadow-bounce { animation: fbShadowBounce 400ms cubic-bezier(0.36,0.07,0.19,0.97) both; }
+          .db-fb-shadow-spin   { animation: fbShadowSpin 580ms cubic-bezier(0.25,0.46,0.45,0.94) both; }
         }
 
         .db-header  { animation: fadeUp 0.45s ease both; animation-delay: 0ms; }
@@ -187,6 +234,7 @@ export default function DashboardPage() {
         .db-card-0  { animation: fadeUp 0.45s ease both; animation-delay: 180ms; }
         .db-card-1  { animation: fadeUp 0.45s ease both; animation-delay: 270ms; }
         .db-card-2  { animation: fadeUp 0.45s ease both; animation-delay: 360ms; }
+        .db-hiw     { animation: fadeUp 0.45s ease both; animation-delay: 440ms; }
         .db-feature-card:hover .db-card-icon { animation: iconBounce 0.5s ease; }
         .db-signout:hover {
           background: rgba(255,255,255,0.08) !important;
@@ -205,6 +253,15 @@ export default function DashboardPage() {
           -webkit-text-fill-color: transparent;
           background-clip: text;
         }
+        /* Football hover cursor */
+        .db-football-wrap { cursor: pointer; }
+        .db-football-wrap:focus-visible { outline: 2px solid #fbbf24; outline-offset: 6px; border-radius: 50%; }
+        /* How it works step hover */
+        .db-step:hover .db-step-badge {
+          background: rgba(251,191,36,0.18) !important;
+          border-color: rgba(251,191,36,0.5) !important;
+          color: #fbbf24 !important;
+        }
         @media (max-width: 640px) {
           .db-root { padding: 0 !important; align-items: flex-start !important; }
           .db-outer-card { border-radius: 0 !important; min-height: 100vh !important; }
@@ -218,6 +275,8 @@ export default function DashboardPage() {
           .db-feature-title { font-size: 0.95rem !important; }
           .db-stadium-ring-outer { display: none; }
           .db-beam-side { display: none; }
+          .db-football-wrap { display: none; }
+          .db-hiw-steps { flex-direction: column !important; gap: 0.75rem !important; }
         }
       `}</style>
 
@@ -318,6 +377,123 @@ export default function DashboardPage() {
           </svg>
         </div>
 
+        {/* Football accent — floats in root space, above bg (z:1), below card (z:2) */}
+        <div
+          className={`db-football-wrap`}
+          onClick={handleFbClick}
+          onMouseEnter={() => setFbHovered(true)}
+          onMouseLeave={() => setFbHovered(false)}
+          role="img"
+          aria-label="Football"
+          tabIndex={0}
+          onKeyDown={e => e.key === 'Enter' && handleFbClick(e as any)}
+          style={{
+            position: 'absolute',
+            top: 'calc(50% - 260px)',
+            right: 'calc(50% - 380px)',
+            zIndex: 1,
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
+        >
+          {/* Shadow ellipse beneath ball */}
+          <div
+            className={
+              fbSpinning ? 'db-fb-shadow-spin'
+              : fbHovered ? 'db-fb-shadow-bounce'
+              : 'db-fb-shadow-idle'
+            }
+            style={{
+              width: '42px', height: '10px',
+              background: 'radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, transparent 80%)',
+              borderRadius: '50%',
+              margin: '0 auto',
+              transformOrigin: 'center center',
+            }}
+          />
+          {/* Football SVG */}
+          <div
+            className={
+              fbSpinning ? 'db-football-spin'
+              : fbHovered ? 'db-football-bounce'
+              : 'db-football-idle'
+            }
+            style={{ marginTop: '-8px' }}
+          >
+            <svg
+              width="48" height="48"
+              viewBox="0 0 48 48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+              style={{
+                filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.65)) drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
+              }}
+            >
+              <defs>
+                <radialGradient id="fbGrad" cx="38%" cy="32%" r="58%">
+                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.85" />
+                  <stop offset="55%" stopColor="#e8e4df" stopOpacity="0" />
+                  <stop offset="100%" stopColor="#b0aba5" stopOpacity="0.35" />
+                </radialGradient>
+              </defs>
+              {/* Ball body */}
+              <circle cx="24" cy="24" r="22" fill="#f0ede8" />
+              {/* Subtle sphere shading */}
+              <circle cx="24" cy="24" r="22" fill="url(#fbGrad)" />
+              {/* Outer ring */}
+              <circle cx="24" cy="24" r="22" fill="none" stroke="#2a2a2a" strokeWidth="1.2" />
+              {/* Center pentagon */}
+              <polygon
+                points="24,14.5 28.8,18.4 27,24 21,24 19.2,18.4"
+                fill="#1a1a1a"
+                stroke="#1a1a1a" strokeWidth="0.4"
+              />
+              {/* Top pentagon */}
+              <polygon
+                points="24,3.2 30.6,7.8 28.8,16.4 24,14.2 19.2,16.4 17.4,7.8"
+                fill="none" stroke="#1a1a1a" strokeWidth="1.1"
+              />
+              {/* Top-left pentagon outline */}
+              <polygon
+                points="8.5,13.5 17.8,10.8 19.5,18.2 14,22.8 7,20"
+                fill="none" stroke="#1a1a1a" strokeWidth="1.1"
+              />
+              {/* Bottom-left pentagon outline */}
+              <polygon
+                points="7,28 14,25.2 21,29.8 19.2,37.5 10.5,37.5"
+                fill="none" stroke="#1a1a1a" strokeWidth="1.1"
+              />
+              {/* Bottom pentagon outline */}
+              <polygon
+                points="24,44.8 17.4,40.2 19.2,31.6 24,33.8 28.8,31.6 30.6,40.2"
+                fill="none" stroke="#1a1a1a" strokeWidth="1.1"
+              />
+              {/* Bottom-right pentagon outline */}
+              <polygon
+                points="41,28 37,37.5 28.8,37.5 27,29.8 34,25.2"
+                fill="none" stroke="#1a1a1a" strokeWidth="1.1"
+              />
+              {/* Top-right pentagon outline */}
+              <polygon
+                points="40.5,13.5 41,20 34,22.8 28.5,18.2 30.2,10.8"
+                fill="none" stroke="#1a1a1a" strokeWidth="1.1"
+              />
+              {/* Seam lines connecting pentagons */}
+              <line x1="24" y1="3.2"  x2="24" y2="14.5"  stroke="#1a1a1a" strokeWidth="0.9" />
+              <line x1="19.2" y1="16.4" x2="14" y2="22.8" stroke="#1a1a1a" strokeWidth="0.9" />
+              <line x1="21" y1="24" x2="14" y2="25.2"   stroke="#1a1a1a" strokeWidth="0.9" />
+              <line x1="27" y1="24" x2="34" y2="25.2"   stroke="#1a1a1a" strokeWidth="0.9" />
+              <line x1="28.8" y1="16.4" x2="34" y2="22.8" stroke="#1a1a1a" strokeWidth="0.9" />
+              <line x1="19.2" y1="31.6" x2="14" y2="25.2" stroke="#1a1a1a" strokeWidth="0.9" />
+              <line x1="28.8" y1="31.6" x2="34" y2="25.2" stroke="#1a1a1a" strokeWidth="0.9" />
+              {/* Gloss highlight */}
+              <ellipse cx="18" cy="15" rx="5" ry="3.2"
+                fill="rgba(255,255,255,0.45)" style={{ filter: 'blur(1.5px)' }} />
+            </svg>
+          </div>
+        </div>
+
         {/* Click ripples — root space, between bg (z:0) and card (z:1) */}
         {ripples.map(r => (
           <div key={r.id} style={{
@@ -390,7 +566,7 @@ export default function DashboardPage() {
               <p style={styles.eyebrow}>LIVE · FIFA WORLD CUP 2026</p>
               <h2 style={styles.welcomeTitle} className="db-welcome-title">Find your way around the stadium</h2>
               <p style={styles.welcomeDesc} className="db-welcome-desc">
-                Navigate seating, gates, and facilities across FIFA World Cup 2026 venues with our interactive fan and operations tools.
+                Navigate seating, gates, and facilities across FIFA World Cup 2026 venues with our interactive fan and operations tools. Ask the AI assistant for turn-by-turn directions from any gate to your seat, or get instant answers about nearby concessions and facilities. Operations staff get a live real-time dashboard — crowd heatmaps, congestion alerts, and simulation tools — all in one place.
               </p>
             </div>
 
@@ -430,6 +606,27 @@ export default function DashboardPage() {
                     <p style={styles.featureDesc}>Live heatmap, real-time alerts, and crowd spike simulation</p>
                   </div>
                 </Link>
+              </div>
+            </div>
+
+            {/* How it works */}
+            <div style={styles.hiwSection} className="db-hiw">
+              <p style={styles.hiwHeading}>HOW IT WORKS</p>
+              <div style={styles.hiwSteps} className="db-hiw-steps">
+                {([
+                  { n: '1', icon: '🔐', title: 'Sign in', desc: 'Log in with your account to get started' },
+                  { n: '2', icon: '💬', title: 'Ask the AI', desc: 'Tell the assistant your seat or section number' },
+                  { n: '3', icon: '🗺️', title: 'See your path', desc: 'Follow the 3D gate-to-seat route in real time' },
+                  { n: '4', icon: '📡', title: 'Ops monitors live', desc: 'Staff track crowd flow and alerts stadium-wide' },
+                ] as { n: string; icon: string; title: string; desc: string }[]).map(step => (
+                  <div key={step.n} style={styles.hiwStep} className="db-step">
+                    <div style={styles.hiwBadge} className="db-step-badge">{step.n}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={styles.hiwStepTitle}>{step.icon} {step.title}</div>
+                      <div style={styles.hiwStepDesc}>{step.desc}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -562,4 +759,45 @@ const styles: Record<string, React.CSSProperties> = {
   },
   featureTitle: { fontSize: '1rem', fontWeight: 600, color: '#f8fafc', margin: '0 0 0.4rem' },
   featureDesc: { fontSize: '0.85rem', color: '#64748b', margin: 0, lineHeight: 1.4 },
+  // How it works
+  hiwSection: {
+    marginTop: '1.75rem',
+    paddingTop: '1.5rem',
+    borderTop: '1px solid rgba(255,255,255,0.07)',
+  },
+  hiwHeading: {
+    fontFamily: 'var(--font-geist-mono), "Geist Mono", monospace',
+    fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.18em',
+    textTransform: 'uppercase' as const, color: '#475569',
+    margin: '0 0 1rem',
+  },
+  hiwSteps: {
+    display: 'flex',
+    flexDirection: 'row' as const,
+    gap: '1rem',
+    flexWrap: 'wrap' as const,
+  },
+  hiwStep: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0.65rem',
+    flex: '1 1 calc(50% - 0.5rem)',
+    minWidth: '140px',
+    padding: '0.7rem 0.85rem',
+    borderRadius: '10px',
+    background: 'rgba(255,255,255,0.018)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    transition: 'background 0.2s ease, border-color 0.2s ease',
+    cursor: 'default',
+  },
+  hiwBadge: {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0,
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.14)',
+    color: '#94a3b8', fontSize: '0.7rem', fontWeight: 700,
+    transition: 'all 0.2s ease',
+  },
+  hiwStepTitle: { fontSize: '0.82rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.18rem' },
+  hiwStepDesc: { fontSize: '0.74rem', color: '#475569', lineHeight: 1.35 },
 };
