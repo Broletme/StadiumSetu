@@ -392,18 +392,16 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <p style={styles.heroEyebrow}>LIVE · FIFA WORLD CUP 2026</p>
-            <h1 style={styles.heroHeadline}>
-              Find your way<br />around the stadium
-            </h1>
-            <p style={styles.heroDesc}>
-              StadiumSetu is your all-in-one companion for FIFA World Cup 2026 venues.
-              Chat with the AI assistant for turn-by-turn directions from any gate straight to your seat,
-              or ask about the nearest concessions and facilities — instantly.
-              Explore your seating in a fully interactive 3D view that puts your exact location in context.
-              Operations staff get a live dashboard with crowd heatmaps, congestion alerts,
-              and simulation tools to keep every section running smoothly.
-            </p>
+            {/* Glass box backdrop around hero text to ensure crisp contrast over background */}
+            <div style={styles.heroGlassBox}>
+              <p style={styles.heroEyebrow}>LIVE · FIFA WORLD CUP 2026</p>
+              <h1 style={styles.heroHeadline}>
+                Find your way<br />around the stadium
+              </h1>
+              <p style={styles.heroDesc}>
+                Your AI-powered companion for FIFA World Cup 2026. Get turn-by-turn <span style={styles.highlightGold}>gate-to-seat directions</span>, explore interactive <span style={styles.highlightWhite}>3D stadium seating</span>, and access real-time <span style={styles.highlightGold}>crowd operations tools</span>.
+              </p>
+            </div>
           </div>
 
           {/* RIGHT: feature card */}
@@ -508,6 +506,15 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'absolute', top: '-60px', bottom: '-60px', left: '-60px', right: '-60px',
     pointerEvents: 'none', zIndex: 0, overflow: 'hidden', willChange: 'transform',
   },
+  heroGlassBox: {
+    background: 'rgba(10, 14, 26, 0.65)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
+    border: '1px solid rgba(251, 191, 36, 0.18)',
+    borderRadius: '20px',
+    padding: '2rem',
+    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+  },
   heroEyebrow: {
     fontFamily: 'var(--font-geist-mono), "Geist Mono", monospace',
     fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.18em',
@@ -518,11 +525,13 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.15, letterSpacing: '-0.02em',
     background: 'linear-gradient(135deg, #ffffff 0%, #fef3c7 45%, #fbbf24 100%)',
     WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-    margin: '0 0 1.5rem',
+    margin: '0 0 1.25rem',
   },
   heroDesc: {
-    fontSize: '0.97rem', lineHeight: 1.75, color: '#94a3b8', margin: 0, maxWidth: '44ch',
+    fontSize: '1.02rem', lineHeight: 1.65, color: '#cbd5e1', margin: 0, maxWidth: '42ch',
   },
+  highlightGold: { color: '#fbbf24', fontWeight: 600 },
+  highlightWhite: { color: '#f8fafc', fontWeight: 600 },
   outerCard: {
     position: 'relative', zIndex: 1, width: '100%', borderRadius: '22px',
     background: 'linear-gradient(160deg, rgba(20,26,42,0.94) 0%, rgba(16,18,32,0.90) 55%, rgba(12,14,24,0.92) 100%)',
