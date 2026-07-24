@@ -209,13 +209,19 @@ export default function DashboardPage() {
         .db-feature-card:hover .db-card-icon { animation: iconBounce 0.5s ease; }
 
         .db-signout:hover {
-          background: rgba(255,255,255,0.08) !important;
-          border-color: rgba(255,255,255,0.22) !important;
-          color: #f1f5f9 !important;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.3) !important;
+          background: rgba(255,255,255,0.07) !important;
+          border-color: rgba(255,255,255,0.18) !important;
+          color: #e2e8f0 !important;
         }
         .db-signout:focus-visible, a:focus-visible {
-          outline: 2px solid #fbbf24; outline-offset: 3px; border-radius: 4px;
+          outline: 2px solid rgba(251,191,36,0.7); outline-offset: 3px; border-radius: 4px;
+        }
+        .db-outer-card::before {
+          content: '';
+          position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(251,191,36,0.35) 40%, rgba(255,255,255,0.18) 55%, rgba(251,191,36,0.25) 70%, transparent);
+          border-radius: 20px 20px 0 0;
+          pointer-events: none; z-index: 2;
         }
         .db-brand-title {
           background: linear-gradient(105deg, #e2e8f0 0%, #a5b4fc 55%, #8b5cf6 100%);
@@ -521,17 +527,15 @@ const styles: Record<string, React.CSSProperties> = {
   highlightGold: { color: '#fbbf24', fontWeight: 600 },
   highlightWhite: { color: '#f8fafc', fontWeight: 600 },
   outerCard: {
-    position: 'relative', zIndex: 1, width: '100%', borderRadius: '22px',
-    background: 'linear-gradient(160deg, rgba(20,26,42,0.94) 0%, rgba(16,18,32,0.90) 55%, rgba(12,14,24,0.92) 100%)',
-    backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-    border: '1px solid rgba(251,191,36,0.30)',
+    position: 'relative', zIndex: 1, width: '100%', borderRadius: '20px',
+    background: 'linear-gradient(160deg, rgba(10,14,26,0.72) 0%, rgba(8,12,22,0.62) 55%, rgba(6,10,18,0.68) 100%)',
+    backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
+    border: '1px solid rgba(255,255,255,0.09)',
     boxShadow: [
-      '0 0 0 1px rgba(255,255,255,0.06)',
-      '0 0 24px 4px rgba(251,191,36,0.18)',
-      '0 0 60px 12px rgba(251,191,36,0.10)',
-      '0 0 120px 24px rgba(251,191,36,0.05)',
-      '0 24px 80px rgba(0,0,0,0.7)',
-      'inset 0 1px 0 rgba(251,191,36,0.10)',
+      'inset 0 1px 0 rgba(255,255,255,0.07)',
+      'inset 0 0 0 1px rgba(251,191,36,0.06)',
+      '0 0 40px 8px rgba(251,191,36,0.07)',
+      '0 32px 80px rgba(0,0,0,0.55)',
     ].join(', '),
     boxSizing: 'border-box', willChange: 'transform', cursor: 'default',
   },
@@ -539,9 +543,7 @@ const styles: Record<string, React.CSSProperties> = {
   header: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     marginBottom: '1.75rem', paddingBottom: '1.25rem',
-    borderBottom: '1px solid transparent',
-    backgroundImage: 'linear-gradient(90deg, rgba(251,191,36,0.18) 0%, rgba(255,255,255,0.07) 40%, transparent 100%)',
-    backgroundSize: '100% 1px', backgroundPosition: '0 100%', backgroundRepeat: 'no-repeat',
+    borderBottom: '1px solid rgba(255,255,255,0.07)',
     gap: '0.75rem',
   },
   headerLeft: { display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0, flex: 1 },
@@ -581,17 +583,18 @@ const styles: Record<string, React.CSSProperties> = {
   grid: { display: 'flex', flexDirection: 'column' as const, gap: '0.85rem' },
   cardLink: { textDecoration: 'none', color: 'inherit', display: 'block' },
   featureCard: {
-    background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)',
-    borderLeft: '3px solid transparent', borderRadius: '12px', padding: '1.25rem',
-    transition: 'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '14px', padding: '1.1rem 1.25rem',
+    transition: 'transform 0.22s cubic-bezier(0.22,1,0.36,1), border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease',
     cursor: 'pointer',
   },
   featureCardHovered: {
-    transform: 'scale(1.018) translateY(-2px)',
-    background: 'rgba(22,163,74,0.08)',
-    border: '1px solid rgba(22,163,74,0.30)', borderLeft: '3px solid #16a34a',
-    boxShadow: '0 0 0 1px rgba(22,163,74,0.14), 0 12px 40px rgba(22,163,74,0.15), 0 4px 16px rgba(22,163,74,0.10)',
+    transform: 'translateY(-3px)',
+    background: 'rgba(34,197,94,0.07)',
+    border: '1px solid rgba(34,197,94,0.22)',
+    boxShadow: '0 0 0 1px rgba(34,197,94,0.10), 0 8px 32px rgba(34,197,94,0.12), 0 2px 12px rgba(0,0,0,0.35)',
   },
-  featureTitle: { fontSize: '1rem', fontWeight: 600, color: '#f8fafc', margin: '0 0 0.4rem' },
-  featureDesc: { fontSize: '0.85rem', color: '#64748b', margin: 0, lineHeight: 1.4 },
+  featureTitle: { fontSize: '1rem', fontWeight: 600, color: '#f1f5f9', margin: '0 0 0.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' },
+  featureDesc: { fontSize: '0.82rem', color: '#4e5f78', margin: 0, lineHeight: 1.5 },
 };
