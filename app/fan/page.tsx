@@ -240,9 +240,9 @@ export default function FanPage() {
           outline: none;
         }
 
-        @media (max-width: 600px) {
-          .fan-page-root { padding: 0 !important; }
-          .fan-chat-col  { max-width: 100% !important; border-radius: 0 !important; }
+        @media (max-width: 720px) {
+          .fan-page-root { padding: 0.75rem !important; }
+          .fan-chat-col  { max-width: 100% !important; height: min(640px, calc(100vh - 1.5rem)) !important; aspect-ratio: auto !important; border-radius: 16px !important; }
         }
       `}</style>
 
@@ -258,8 +258,9 @@ export default function FanPage() {
           position: 'relative',
           minHeight: '100vh',
           display: 'flex',
-          alignItems: 'stretch',
+          alignItems: 'center',
           justifyContent: 'center',
+          padding: '1.5rem',
           background: 'linear-gradient(160deg, #06090f 0%, #080d18 50%, #050a10 100%)',
           fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
           overflow: 'hidden',
@@ -271,11 +272,10 @@ export default function FanPage() {
 
         {/*
           ── Chat column ──────────────────────────────────────────────────
-          A vertically-stacked flex column:
-            1. sticky header bar (always visible, never scrolls)
-            2. scrollable message list (flex: 1, overflowY: auto)
-            3. sticky input bar (always visible at bottom)
-          This guarantees messages NEVER bleed behind the header.
+          A vertically-stacked flex column inside a spacious 1:1 square glass box:
+            1. header bar (fixed top inside card)
+            2. scrollable message list (flex: 1, overflowY: auto inside card)
+            3. input bar (fixed bottom inside card)
         */}
         <div
           className="fan-chat-col"
@@ -283,17 +283,19 @@ export default function FanPage() {
             position: 'relative',
             zIndex: 1,
             width: '100%',
-            maxWidth: '580px',
+            maxWidth: '680px',
+            height: 'min(680px, 84vh)',
+            aspectRatio: '1 / 1',
             display: 'flex',
             flexDirection: 'column',
-            minHeight: '100vh',
+            borderRadius: '24px',
+            overflow: 'hidden',
             /* Frosted-glass panel — transparent enough to see the stadium */
-            background: 'rgba(6,10,18,0.28)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            borderLeft:  '1px solid rgba(255,255,255,0.08)',
-            borderRight: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: 'inset 1px 0 0 rgba(251,191,36,0.04), inset -1px 0 0 rgba(251,191,36,0.04)',
+            background: 'rgba(6,10,18,0.65)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.7), 0 0 35px rgba(99,102,241,0.18), inset 0 1px 0 rgba(251,191,36,0.15)',
           }}
         >
           {/* ── 1. Sticky header ─────────────────────────────────────── */}
