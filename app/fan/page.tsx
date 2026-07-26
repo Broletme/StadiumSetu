@@ -241,22 +241,22 @@ export default function FanPage() {
         }
 
         @media (max-width: 720px) {
-          .fan-page-root { padding: 0.75rem !important; }
-          .fan-chat-col  { max-width: 100% !important; height: min(640px, calc(100vh - 1.5rem)) !important; aspect-ratio: auto !important; border-radius: 16px !important; }
+          .fan-page-root { padding: 0.75rem !important; height: 100vh !important; }
+          .fan-chat-col  { max-width: 100% !important; height: calc(100vh - 1.5rem) !important; border-radius: 16px !important; }
         }
       `}</style>
 
       {/*
         ── Page root ──────────────────────────────────────────────────────
         position: relative so StadiumBackground absolute-positions inside it.
-        min-height: 100vh + overflow: hidden so background doesn't spill.
-        The chat column is a flex child that fills the remaining space.
+        height: 100vh + overflow: hidden so background doesn't spill.
+        The chat column is centered with perfectly symmetric top & bottom padding.
       */}
       <div
         className="fan-page-root"
         style={{
           position: 'relative',
-          minHeight: '100vh',
+          height: '100vh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -284,7 +284,7 @@ export default function FanPage() {
             zIndex: 1,
             width: '100%',
             maxWidth: '680px',
-            height: 'min(740px, calc(100vh - 4rem))',
+            height: 'calc(100vh - 4rem)',
             display: 'flex',
             flexDirection: 'column',
             borderRadius: '24px',
