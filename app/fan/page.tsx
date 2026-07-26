@@ -260,7 +260,7 @@ export default function FanPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '1.5rem',
+          padding: '2rem 1.5rem',
           background: 'linear-gradient(160deg, #06090f 0%, #080d18 50%, #050a10 100%)',
           fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
           overflow: 'hidden',
@@ -272,7 +272,7 @@ export default function FanPage() {
 
         {/*
           ── Chat column ──────────────────────────────────────────────────
-          A vertically-stacked flex column inside a spacious 1:1 square glass box:
+          A vertically-stacked flex column inside a spacious glass box centered vertically with equal top/bottom gaps:
             1. header bar (fixed top inside card)
             2. scrollable message list (flex: 1, overflowY: auto inside card)
             3. input bar (fixed bottom inside card)
@@ -284,8 +284,7 @@ export default function FanPage() {
             zIndex: 1,
             width: '100%',
             maxWidth: '680px',
-            height: 'min(680px, 84vh)',
-            aspectRatio: '1 / 1',
+            height: 'min(740px, calc(100vh - 4rem))',
             display: 'flex',
             flexDirection: 'column',
             borderRadius: '24px',
