@@ -39,12 +39,17 @@ export default function FanPage() {
   const [loading, setLoading] = useState(false);
   const [slowServerNotice, setSlowServerNotice] = useState(false);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef  = useRef<HTMLInputElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const inputRef      = useRef<HTMLInputElement>(null);
 
-  /* Auto-scroll to bottom whenever messages change */
+  /* Auto-scroll to bottom inside the chat container whenever messages change */
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTo({
+        top: chatScrollRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
   }, [messages, loading]);
 
   /* Fetch chat history on load */
@@ -375,6 +380,7 @@ export default function FanPage() {
 
           {/* ── 2. Scrollable message list ───────────────────────────── */}
           <div
+            ref={chatScrollRef}
             className="fan-scroll"
             style={{
               flex: 1,
@@ -518,9 +524,6 @@ export default function FanPage() {
                 )}
               </div>
             )}
-
-            {/* Scroll anchor */}
-            <div ref={bottomRef} style={{ height: '0.25rem' }} />
           </div>
 
           {/* ── 3. Sticky input bar ──────────────────────────────────── */}
