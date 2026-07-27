@@ -43,6 +43,8 @@ function Fan3DContent() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [searchResult, setSearchResult] = useState<Zone | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   // Tracks known gates so we can render all gate markers even before a search
   // (starts empty; populated after first successful query)
@@ -51,6 +53,29 @@ function Fan3DContent() {
   const searchParams = useSearchParams();
   const initialSection = searchParams.get('section');
   const hasLoadedInitial = useRef(false);
+
+  // Check localStorage for onboarding guide on mount
+  useEffect(() => {
+    try {
+      const hasSeen = localStorage.getItem('stadiumsetu_fan_3d_guide_seen');
+      if (!hasSeen) {
+        setShowGuide(true);
+      }
+    } catch {
+      setShowGuide(true);
+    }
+  }, []);
+
+  const closeGuide = (savePreference = false) => {
+    setShowGuide(false);
+    if (savePreference || dontShowAgain) {
+      try {
+        localStorage.setItem('stadiumsetu_fan_3d_guide_seen', 'true');
+      } catch (e) {
+        console.error('Could not save onboarding preference', e);
+      }
+    }
+  };
 
   const executeSearch = async (query: string) => {
     if (!query.trim()) return;
@@ -105,11 +130,20 @@ function Fan3DContent() {
       <div style={styles.panel}>
         <div style={styles.topNav}>
           <Link href="/dashboard" style={styles.backButton}>
-            ← Back to Dashboard
+            ← Dashboard
           </Link>
-          <Link href="/fan" style={styles.askAiButton}>
-            ✨ Ask AI
-          </Link>
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <button
+              onClick={() => setShowGuide(true)}
+              style={styles.guideTriggerButton}
+              title="How to use 3D finder"
+            >
+              ℹ️ Guide
+            </button>
+            <Link href="/fan" style={styles.askAiButton}>
+              ✨ Ask AI
+            </Link>
+          </div>
         </div>
         
         {/* Header */}
@@ -213,6 +247,98 @@ function Fan3DContent() {
         {/* Drag hint */}
         <p style={styles.dragHint}>Drag to rotate · Scroll to zoom</p>
       </div>
+
+      {/* ── Onboarding / Information Modal ───────────────────────────────── */}
+      {showGuide && (
+        <div style={styles.modalOverlay} onClick={() => closeGuide(false)}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            {/* Close button */}
+            <button
+              style={styles.modalCloseBtn}
+              onClick={() => closeGuide(false)}
+              aria-label="Close guide"
+            >
+              ✕
+            </button>
+
+            {/* Modal Header */}
+            <div style={styles.modalHeader}>
+              <div style={styles.modalBadge}>
+                <span>🏟️ FIFA World Cup 2026</span>
+              </div>
+              <h2 style={styles.modalTitle}>3D Stadium Seat Finder Guide</h2>
+              <p style={styles.modalSubtitle}>
+                Interactively locate your seating section, view entrance gates, and navigate the stadium in 3D.
+              </p>
+            </div>
+
+            {/* Feature Cards Grid */}
+            <div style={styles.guideGrid}>
+              <div style={styles.guideCard}>
+                <div style={styles.guideCardIcon}>🔍</div>
+                <div>
+                  <h3 style={styles.guideCardTitle}>1. Search Your Section</h3>
+                  <p style={styles.guideCardText}>
+                    Type your section number (e.g. <b>L01</b>, <b>U06</b>, <b>210</b>) in the search box on the left panel to locate it.
+                  </p>
+                </div>
+              </div>
+
+              <div style={styles.guideCard}>
+                <div style={styles.guideCardIcon}>🟢</div>
+                <div>
+                  <h3 style={styles.guideCardTitle}>2. View Your Gate & Path</h3>
+                  <p style={styles.guideCardText}>
+                    Your section will highlight in green, with an animated guide line pointing directly to your nearest entrance gate.
+                  </p>
+                </div>
+              </div>
+
+              <div style={styles.guideCard}>
+                <div style={styles.guideCardIcon}>🎮</div>
+                <div>
+                  <h3 style={styles.guideCardTitle}>3. Interactive 3D Controls</h3>
+                  <p style={styles.guideCardText}>
+                    <b>Rotate:</b> Left-click & drag anywhere on the 3D view.<br />
+                    <b>Zoom:</b> Scroll mouse wheel up or down.<br />
+                    <b>Pan:</b> Right-click & drag.
+                  </p>
+                </div>
+              </div>
+
+              <div style={styles.guideCard}>
+                <div style={styles.guideCardIcon}>✨</div>
+                <div>
+                  <h3 style={styles.guideCardTitle}>4. Smart AI Integration</h3>
+                  <p style={styles.guideCardText}>
+                    Click <b>✨ Ask AI</b> anytime to chat naturally with your stadium assistant and get automatic 3D directions!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={styles.modalFooter}>
+              <label style={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={dontShowAgain}
+                  onChange={(e) => setDontShowAgain(e.target.checked)}
+                  style={styles.checkboxInput}
+                />
+                <span style={styles.checkboxText}>Don't show this again</span>
+              </label>
+
+              <button
+                onClick={() => closeGuide(true)}
+                style={styles.modalActionBtn}
+              >
+                Start Exploring 🚀
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -484,5 +610,165 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase' as const,
     color: 'rgba(241, 245, 249, 0.55)',
     textShadow: '0 1px 8px rgba(99, 102, 241, 0.25)',
+  },
+
+  guideTriggerButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.2rem',
+    color: '#cbd5e1',
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '8px',
+    padding: '0.4rem 0.65rem',
+    fontSize: '0.8rem',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+
+  // ── Modal Styles ────────────────────────────────────────────────────────────
+  modalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 99999,
+    background: 'rgba(5, 8, 16, 0.75)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '1.5rem',
+    animation: 'fan-fadeSlideUp 0.25s ease both',
+  },
+  modalContent: {
+    position: 'relative',
+    width: '100%',
+    maxWidth: '560px',
+    background: 'linear-gradient(165deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.98) 100%)',
+    border: '1px solid rgba(99, 102, 241, 0.3)',
+    borderRadius: '20px',
+    boxShadow:
+      '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+    padding: '2rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
+  },
+  modalCloseBtn: {
+    position: 'absolute',
+    top: '1.25rem',
+    right: '1.25rem',
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    color: '#94a3b8',
+    fontSize: '0.9rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s',
+  },
+  modalHeader: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.4rem',
+  },
+  modalBadge: {
+    display: 'inline-flex',
+    alignSelf: 'flex-start',
+    padding: '0.25rem 0.65rem',
+    background: 'rgba(99, 102, 241, 0.15)',
+    border: '1px solid rgba(99, 102, 241, 0.35)',
+    borderRadius: '20px',
+    color: '#a5b4fc',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+  },
+  modalTitle: {
+    fontSize: '1.4rem',
+    fontWeight: 800,
+    color: '#f8fafc',
+    margin: '0.2rem 0 0',
+    letterSpacing: '-0.01em',
+  },
+  modalSubtitle: {
+    fontSize: '0.875rem',
+    color: '#94a3b8',
+    margin: 0,
+    lineHeight: 1.5,
+  },
+  guideGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+    gap: '0.875rem',
+  },
+  guideCard: {
+    background: 'rgba(255, 255, 255, 0.03)',
+    border: '1px solid rgba(255, 255, 255, 0.07)',
+    borderRadius: '12px',
+    padding: '0.9rem 1rem',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0.75rem',
+  },
+  guideCardIcon: {
+    fontSize: '1.25rem',
+    lineHeight: 1,
+    flexShrink: 0,
+    marginTop: '0.1rem',
+  },
+  guideCardTitle: {
+    fontSize: '0.875rem',
+    fontWeight: 700,
+    color: '#e2e8f0',
+    margin: '0 0 0.25rem',
+  },
+  guideCardText: {
+    fontSize: '0.78rem',
+    color: '#94a3b8',
+    margin: 0,
+    lineHeight: 1.45,
+  },
+  modalFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: '1rem',
+    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+    flexWrap: 'wrap',
+    gap: '1rem',
+  },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    cursor: 'pointer',
+    userSelect: 'none',
+  },
+  checkboxInput: {
+    accentColor: '#6366f1',
+    cursor: 'pointer',
+    width: '15px',
+    height: '15px',
+  },
+  checkboxText: {
+    fontSize: '0.82rem',
+    color: '#94a3b8',
+  },
+  modalActionBtn: {
+    padding: '0.65rem 1.4rem',
+    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+    border: '1px solid rgba(99, 102, 241, 0.5)',
+    borderRadius: '10px',
+    color: '#ffffff',
+    fontSize: '0.875rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)',
+    transition: 'transform 0.15s, background 0.2s',
   },
 };

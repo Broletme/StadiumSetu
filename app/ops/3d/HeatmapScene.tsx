@@ -16,7 +16,7 @@ import {
   ROOF_SCALE, ROOF_Y,
   VOM_HEIGHT,
   COLOR_GATE,
-  bowlPosition, sectionAngleDeg,
+  bowlPosition, sectionAngleDeg, getGateColor,
 } from '@/lib/stadiumGeometry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -604,27 +604,28 @@ function GateMarker({ gate }: { gate: Gate }) {
   const archHeight = 1.4;
   const archDepth = 0.3;
   const pillarWidth = 0.18;
+  const gateColor = getGateColor(gate.name || gate.id);
 
   return (
     <group position={pos} rotation={[0, yawRad, 0]}>
       <mesh position={[-archWidth / 2 + pillarWidth / 2, archHeight / 2, 0]}>
         <boxGeometry args={[pillarWidth, archHeight, archDepth]} />
-        <meshStandardMaterial color={COLOR_GATE} emissive={COLOR_GATE} emissiveIntensity={0.5} roughness={0.35} metalness={0.4} />
+        <meshStandardMaterial color={gateColor} emissive={gateColor} emissiveIntensity={0.5} roughness={0.35} metalness={0.4} />
       </mesh>
       <mesh position={[archWidth / 2 - pillarWidth / 2, archHeight / 2, 0]}>
         <boxGeometry args={[pillarWidth, archHeight, archDepth]} />
-        <meshStandardMaterial color={COLOR_GATE} emissive={COLOR_GATE} emissiveIntensity={0.5} roughness={0.35} metalness={0.4} />
+        <meshStandardMaterial color={gateColor} emissive={gateColor} emissiveIntensity={0.5} roughness={0.35} metalness={0.4} />
       </mesh>
       <mesh position={[0, archHeight, 0]}>
         <boxGeometry args={[archWidth, 0.2, archDepth]} />
-        <meshStandardMaterial color={COLOR_GATE} emissive={COLOR_GATE} emissiveIntensity={0.6} roughness={0.3} metalness={0.5} />
+        <meshStandardMaterial color={gateColor} emissive={gateColor} emissiveIntensity={0.6} roughness={0.3} metalness={0.5} />
       </mesh>
-      <Html position={[0, archHeight + 0.55, 0]} center
+      <Html position={[0, archHeight + 0.55, 0]} center zIndexRange={[50, 0]}
         style={{
-          color: '#f59e0b', fontSize: '11px', fontWeight: 700,
+          color: gateColor, fontSize: '11px', fontWeight: 700,
           fontFamily: "'Inter', system-ui, sans-serif",
-          background: 'rgba(0,0,0,0.6)', padding: '2px 7px', borderRadius: '4px',
-          border: '1px solid rgba(245,158,11,0.35)', whiteSpace: 'nowrap',
+          background: 'rgba(0,0,0,0.75)', padding: '2px 7px', borderRadius: '4px',
+          border: `1px solid ${gateColor}66`, whiteSpace: 'nowrap',
           pointerEvents: 'none', userSelect: 'none',
         }}
       >

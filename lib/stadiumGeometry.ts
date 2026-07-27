@@ -91,3 +91,65 @@ export const COLOR_PITCH         = '#16a34a';
 export const COLOR_PITCH_LINES   = '#22c55e';
 export const COLOR_CONCOURSE     = '#9ca3af';
 export const COLOR_VOMITORY      = '#0f0f1a';
+
+// ─── Gate Color Mapping ───────────────────────────────────────────────────────
+
+export const GATE_COLOR_MAP: Record<string, string> = {
+  'gate a': '#3b82f6', // Vivid Blue
+  'gate-a': '#3b82f6',
+  'a':      '#3b82f6',
+
+  'gate b': '#f59e0b', // Amber / Gold
+  'gate-b': '#f59e0b',
+  'b':      '#f59e0b',
+
+  'gate c': '#ec4899', // Hot Pink / Magenta
+  'gate-c': '#ec4899',
+  'c':      '#ec4899',
+
+  'gate d': '#8b5cf6', // Violet / Purple
+  'gate-d': '#8b5cf6',
+  'd':      '#8b5cf6',
+
+  'gate e': '#06b6d4', // Cyan / Teal
+  'gate-e': '#06b6d4',
+  'e':      '#06b6d4',
+
+  'gate f': '#ef4444', // Red
+  'gate-f': '#ef4444',
+  'f':      '#ef4444',
+
+  'gate g': '#10b981', // Emerald Green
+  'gate-g': '#10b981',
+  'g':      '#10b981',
+
+  'gate h': '#f97316', // Orange
+  'gate-h': '#f97316',
+  'h':      '#f97316',
+};
+
+const GATE_PALETTE = [
+  '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6',
+  '#06b6d4', '#ef4444', '#10b981', '#f97316', '#6366f1', '#14b8a6',
+];
+
+/**
+ * Returns the unique color assigned to a specific gate.
+ * If the gate name/ID matches a known key, returns its color.
+ * Otherwise, deterministically computes a color from the string hash.
+ */
+export function getGateColor(gateNameOrId?: string | null): string {
+  if (!gateNameOrId) return COLOR_GATE;
+  const key = gateNameOrId.trim().toLowerCase();
+  if (GATE_COLOR_MAP[key]) {
+    return GATE_COLOR_MAP[key];
+  }
+
+  // Deterministic fallback based on character code sum
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = key.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const idx = Math.abs(hash) % GATE_PALETTE.length;
+  return GATE_PALETTE[idx];
+}

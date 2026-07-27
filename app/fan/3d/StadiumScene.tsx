@@ -19,7 +19,7 @@ import {
   COLOR_LOWER_DEFAULT, COLOR_UPPER_DEFAULT, COLOR_HIGHLIGHTED,
   COLOR_GATE, COLOR_PATH, COLOR_PITCH,
   COLOR_CONCOURSE, COLOR_VOMITORY,
-  bowlPosition, sectionAngleDeg,
+  bowlPosition, sectionAngleDeg, getGateColor,
 } from '@/lib/stadiumGeometry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -708,10 +708,10 @@ function TierLabels() {
 
   return (
     <group>
-      <Html position={[lx, lowerY, lz]} center style={labelStyle}>
+      <Html position={[lx, lowerY, lz]} center zIndexRange={[50, 0]} style={labelStyle}>
         LOWER TIER
       </Html>
-      <Html position={[ux, upperY, uz]} center style={labelStyle}>
+      <Html position={[ux, upperY, uz]} center zIndexRange={[50, 0]} style={labelStyle}>
         UPPER TIER
       </Html>
     </group>
@@ -759,8 +759,9 @@ function Vomitory({ sectionIndex }: { sectionIndex: number }) {
 /** Gate archway structure + Html label billboard */
 function GateMarker({ gate }: { gate: Gate }) {
   // Use bowlPosition (via gatePosition) — same formula as every other element
-  const pos    = gatePosition(gate.angle_deg);
-  const yawRad = (gate.angle_deg * Math.PI) / 180 + Math.PI / 2;
+  const pos       = gatePosition(gate.angle_deg);
+  const yawRad    = (gate.angle_deg * Math.PI) / 180 + Math.PI / 2;
+  const gateColor = getGateColor(gate.name || gate.id);
 
   // ── Alignment diagnostic (checked every render — visible in browser console) ─
   console.log(
@@ -779,8 +780,8 @@ function GateMarker({ gate }: { gate: Gate }) {
       <mesh position={[-archWidth / 2 + pillarWidth / 2, archHeight / 2, 0]}>
         <boxGeometry args={[pillarWidth, archHeight, archDepth]} />
         <meshStandardMaterial
-          color={COLOR_GATE}
-          emissive={COLOR_GATE}
+          color={gateColor}
+          emissive={gateColor}
           emissiveIntensity={0.5}
           roughness={0.35}
           metalness={0.4}
@@ -790,8 +791,8 @@ function GateMarker({ gate }: { gate: Gate }) {
       <mesh position={[archWidth / 2 - pillarWidth / 2, archHeight / 2, 0]}>
         <boxGeometry args={[pillarWidth, archHeight, archDepth]} />
         <meshStandardMaterial
-          color={COLOR_GATE}
-          emissive={COLOR_GATE}
+          color={gateColor}
+          emissive={gateColor}
           emissiveIntensity={0.5}
           roughness={0.35}
           metalness={0.4}
@@ -801,8 +802,8 @@ function GateMarker({ gate }: { gate: Gate }) {
       <mesh position={[0, archHeight, 0]}>
         <boxGeometry args={[archWidth, 0.2, archDepth]} />
         <meshStandardMaterial
-          color={COLOR_GATE}
-          emissive={COLOR_GATE}
+          color={gateColor}
+          emissive={gateColor}
           emissiveIntensity={0.6}
           roughness={0.3}
           metalness={0.5}
@@ -812,15 +813,16 @@ function GateMarker({ gate }: { gate: Gate }) {
       <Html
         position={[0, archHeight + 0.55, 0]}
         center
+        zIndexRange={[50, 0]}
         style={{
-          color: '#f59e0b',
+          color: gateColor,
           fontSize: '11px',
           fontWeight: 700,
           fontFamily: "'Inter', system-ui, sans-serif",
-          background: 'rgba(0, 0, 0, 0.6)',
+          background: 'rgba(0, 0, 0, 0.75)',
           padding: '2px 7px',
           borderRadius: '4px',
-          border: '1px solid rgba(245, 158, 11, 0.35)',
+          border: `1px solid ${gateColor}66`,
           whiteSpace: 'nowrap',
           pointerEvents: 'none',
           userSelect: 'none',
@@ -836,9 +838,11 @@ function GateMarker({ gate }: { gate: Gate }) {
 function PathSphere({
   curve,
   phaseOffset,
+  color,
 }: {
   curve: THREE.CatmullRomCurve3;
   phaseOffset: number;
+  color: string;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const tRef    = useRef(phaseOffset);
@@ -855,8 +859,8 @@ function PathSphere({
     <mesh ref={meshRef}>
       <sphereGeometry args={[PATH_SPHERE_RADIUS, 12, 12]} />
       <meshStandardMaterial
-        color={COLOR_PATH}
-        emissive={COLOR_PATH}
+        color={color}
+        emissive={color}
         emissiveIntensity={0.9}
         transparent
         opacity={0.85}
@@ -887,12 +891,13 @@ function PathLine({ zone }: { zone: Zone }) {
   const gatePos    = gatePosition(gateDeg);
   const sectionPos = wedgeCentre(zone.section_index, innerScale, outerScale, y, depth);
 
+  // Dynamic color derived from the gate
+  const gateColor  = getGateColor(zone.gate?.name || zone.gate?.id);
+
   // ── U04 / Gate-C alignment diagnostic ──────────────────────────────────────
-  // Log exact angles and bowlPosition outputs for every search result so we
-  // can verify section↔gate alignment without eyeballing the 3-D scene.
   const [_bpGX, _bpGZ] = bowlPosition(gateDeg, GATE_SCALE);
   const [_bpSX, _bpSZ] = bowlPosition(sectionDeg, (innerScale + outerScale) / 2);
-  const angularDelta    = ((sectionDeg - gateDeg + 540) % 360) - 180; // shortest diff
+  const angularDelta    = ((sectionDeg - gateDeg + 540) % 360) - 180;
   console.log(
     `[PathLine alignment]\n` +
     `  section ${zone.section_number}  index=${zone.section_index}` +
@@ -900,8 +905,7 @@ function PathLine({ zone }: { zone: Zone }) {
     `  bowlPos → x=${_bpSX.toFixed(3)}, z=${_bpSZ.toFixed(3)}\n` +
     `  gate "${zone.gate.name}"  angle_deg=${gateDeg.toFixed(2)}°` +
     `  bowlPos(GATE_SCALE) → x=${_bpGX.toFixed(3)}, z=${_bpGZ.toFixed(3)}\n` +
-    `  angularDelta (section - gate)=${angularDelta.toFixed(2)}°  ` +
-    `(should be ≈ 0 for adjacent gate, ±15 for neighbouring gate)`,
+    `  angularDelta (section - gate)=${angularDelta.toFixed(2)}°`,
   );
 
   const { curve, curvePoints, vomPos } = useMemo(() => {
@@ -954,31 +958,32 @@ function PathLine({ zone }: { zone: Zone }) {
 
   return (
     <group>
-      {/* The path line itself */}
+      {/* The path line itself matching gate color */}
       <Line
         points={curvePoints}
-        color={COLOR_PATH}
-        lineWidth={3}
+        color={gateColor}
+        lineWidth={3.5}
         transparent
-        opacity={0.6}
+        opacity={0.75}
       />
-      {/* Animated glowing spheres traveling along the path */}
+      {/* Animated glowing spheres traveling along the path with gate color */}
       {spherePhases.map((phase, i) => (
-        <PathSphere key={i} curve={curve} phaseOffset={phase} />
+        <PathSphere key={i} curve={curve} phaseOffset={phase} color={gateColor} />
       ))}
-      {/* Label at vomitory entrance */}
+      {/* Label at vomitory entrance with matching gate color */}
       <Html
         position={[vomPos.x, vomPos.y + 1.0, vomPos.z]}
         center
+        zIndexRange={[50, 0]}
         style={{
-          color: '#4ade80',
+          color: gateColor,
           fontSize: '10px',
           fontWeight: 600,
           fontFamily: "'Inter', system-ui, sans-serif",
-          background: 'rgba(0, 0, 0, 0.65)',
+          background: 'rgba(0, 0, 0, 0.75)',
           padding: '2px 8px',
           borderRadius: '4px',
-          border: '1px solid rgba(74, 222, 128, 0.3)',
+          border: `1px solid ${gateColor}66`,
           whiteSpace: 'nowrap',
           pointerEvents: 'none',
           userSelect: 'none',
