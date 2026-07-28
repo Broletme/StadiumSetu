@@ -1,9 +1,15 @@
 'use client';
 
-import { useState, useMemo, useEffect, Suspense, useRef } from 'react';
+import { useState, useMemo, useEffect, Suspense, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import {
+  type AmenityType,
+  AMENITY_TYPE_COLORS,
+  AMENITY_TYPE_LABELS,
+  AMENITY_ICONS,
+} from '@/lib/stadiumGeometry';
 
 // ─── Dynamic import (ssr: false) for the R3F Canvas ─────────────────────────
 const StadiumScene = dynamic(() => import('./StadiumScene'), {
@@ -49,6 +55,18 @@ function Fan3DContent() {
   // Tracks known gates so we can render all gate markers even before a search
   // (starts empty; populated after first successful query)
   const [knownGates, setKnownGates] = useState<Gate[]>([]);
+
+  // ── Amenity type visibility toggles ──────────────────────────────────────
+  const [activeAmenities, setActiveAmenities] = useState<Set<AmenityType>>(new Set());
+  const toggleAmenity = useCallback((type: AmenityType) => {
+    setActiveAmenities((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }, []);
+  const [highlightedAmenityType, setHighlightedAmenityType] = useState<AmenityType | null>(null);
 
   const searchParams = useSearchParams();
   const initialSection = searchParams.get('section');
@@ -133,6 +151,9 @@ function Fan3DContent() {
             ← Dashboard
           </Link>
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <Link href="/fan/map" style={styles.map2dButton}>
+              🗺 Map
+            </Link>
             <button
               onClick={() => setShowGuide(true)}
               style={styles.guideTriggerButton}
@@ -214,6 +235,80 @@ function Fan3DContent() {
           </div>
         )}
 
+        {/* ── Stadium Amenities Toggles ──────────────────────────────────── */}
+        <div style={styles.amenitySection}>
+          <div style={styles.amenityHeader}>
+            <h3 style={styles.amenityTitle}>Stadium Amenities</h3>
+            <button
+              onClick={() => {
+                setActiveAmenities((prev) =>
+                  prev.size > 0 ? new Set() : new Set<AmenityType>(['restroom', 'food', 'merchandise', 'firstaid', 'elevator', 'exit']),
+                );
+              }}
+              style={styles.amenityToggleAll}
+            >
+              {activeAmenities.size > 0 ? 'Hide All' : 'Show All'}
+            </button>
+          </div>
+          <div style={styles.amenityGrid}>
+            {(
+              [
+                'restroom',
+                'food',
+                'merchandise',
+                'firstaid',
+                'elevator',
+                'exit',
+              ] as AmenityType[]
+            ).map((type) => {
+              const isHighlighted = highlightedAmenityType === type;
+              return (
+                <label
+                  key={type}
+                  style={{
+                    ...styles.amenityItem,
+                    background: isHighlighted
+                      ? 'rgba(255,255,255,0.06)'
+                      : 'transparent',
+                  }}
+                  onMouseEnter={() => setHighlightedAmenityType(type)}
+                  onMouseLeave={() => setHighlightedAmenityType(null)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={activeAmenities.has(type)}
+                    onChange={() => toggleAmenity(type)}
+                    style={styles.amenityCheckbox}
+                  />
+                  <span
+                    style={{
+                      ...styles.amenityDot,
+                      background: AMENITY_TYPE_COLORS[type],
+                      boxShadow: activeAmenities.has(type) || isHighlighted
+                        ? `0 0 6px ${AMENITY_TYPE_COLORS[type]}66`
+                        : 'none',
+                    }}
+                  />
+                  <span
+                    style={{
+                      ...styles.amenityLabel,
+                      color: isHighlighted ? '#f1f5f9' : undefined,
+                    }}
+                  >
+                    {AMENITY_ICONS[type]}{' '}
+                    {AMENITY_TYPE_LABELS[type]}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          {activeAmenities.size === 0 && (
+            <p style={styles.amenityHint}>
+              Toggle amenities above to see their locations in the 3D stadium
+            </p>
+          )}
+        </div>
+
         {/* Legend */}
         <div style={styles.legend}>
           <div style={styles.legendItem}>
@@ -242,7 +337,11 @@ function Fan3DContent() {
           <span style={styles.stadiumNameText}>StadiumSetu Arena</span>
         </div>
 
-        <StadiumScene zone={searchResult} uniqueGates={uniqueGates} />
+        <StadiumScene
+          zone={searchResult}
+          uniqueGates={uniqueGates}
+          activeAmenities={activeAmenities}
+        />
 
         {/* Drag hint */}
         <p style={styles.dragHint}>Drag to rotate · Scroll to zoom</p>
@@ -567,6 +666,79 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'inline-block',
   },
 
+  // ── Amenity toggles ───────────────────────────────────────────────────────
+  amenitySection: {
+    paddingTop: '1.25rem',
+    marginTop: '0.5rem',
+    borderTop: '1px solid rgba(255,255,255,0.06)',
+  },
+  amenityHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.75rem',
+  },
+  amenityTitle: {
+    fontSize: '0.82rem',
+    fontWeight: 700,
+    color: '#e2e8f0',
+    margin: 0,
+    letterSpacing: '0.02em',
+  },
+  amenityToggleAll: {
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '6px',
+    color: '#94a3b8',
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    padding: '0.2rem 0.6rem',
+    cursor: 'pointer',
+  },
+  amenityGrid: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.4rem',
+  },
+  amenityItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.45rem',
+    cursor: 'pointer',
+    padding: '0.25rem 0.35rem',
+    borderRadius: '6px',
+    transition: 'background 0.15s',
+    userSelect: 'none' as const,
+  },
+  amenityCheckbox: {
+    accentColor: '#6366f1',
+    cursor: 'pointer',
+    width: '13px',
+    height: '13px',
+    flexShrink: 0,
+  },
+  amenityDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    flexShrink: 0,
+    display: 'inline-block',
+    transition: 'box-shadow 0.2s',
+  },
+  amenityLabel: {
+    color: '#94a3b8',
+    fontSize: '0.78rem',
+    fontWeight: 500,
+    lineHeight: 1.3,
+  },
+  amenityHint: {
+    color: '#64748b',
+    fontSize: '0.72rem',
+    margin: '0.6rem 0 0',
+    fontStyle: 'italic',
+    lineHeight: 1.4,
+  },
+
   // ── Canvas ─────────────────────────────────────────────────────────────────
   canvasWrapper: {
     flex: 1,
@@ -612,6 +784,21 @@ const styles: Record<string, React.CSSProperties> = {
     textShadow: '0 1px 8px rgba(99, 102, 241, 0.25)',
   },
 
+  map2dButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.2rem',
+    color: '#a5b4fc',
+    textDecoration: 'none',
+    background: 'rgba(99,102,241,0.1)',
+    border: '1px solid rgba(99,102,241,0.3)',
+    borderRadius: '8px',
+    padding: '0.4rem 0.65rem',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
   guideTriggerButton: {
     display: 'inline-flex',
     alignItems: 'center',

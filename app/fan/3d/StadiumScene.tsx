@@ -20,6 +20,9 @@ import {
   COLOR_GATE, COLOR_PATH, COLOR_PITCH,
   COLOR_CONCOURSE, COLOR_VOMITORY,
   bowlPosition, sectionAngleDeg, getGateColor,
+  type AmenityType, type Amenity,
+  AMENITY_TYPE_COLORS,
+  getAllAmenities,
 } from '@/lib/stadiumGeometry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -995,14 +998,79 @@ function PathLine({ zone }: { zone: Zone }) {
   );
 }
 
+// ─── Amenity Marker Components ───────────────────────────────────────────────
+
+const amenityPoleGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.5, 6);
+const amenityHeadGeo = new THREE.SphereGeometry(0.09, 8, 8);
+
+function AmenityMarker({ amenity }: { amenity: Amenity }) {
+  const [x, z] = bowlPosition(amenity.angle_deg, amenity.radiusScale);
+  const pos = new THREE.Vector3(x, amenity.y, z);
+  const color = AMENITY_TYPE_COLORS[amenity.type];
+  const poleHeight = 0.5;
+
+  return (
+    <group position={pos}>
+      <mesh position={[0, poleHeight / 2, 0]} geometry={amenityPoleGeo}>
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.25} />
+      </mesh>
+      <mesh position={[0, poleHeight, 0]} geometry={amenityHeadGeo}>
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
+      </mesh>
+      <Html
+        position={[0, poleHeight + 0.35, 0]}
+        center
+        zIndexRange={[50, 0]}
+        style={{
+          color: '#fff',
+          fontSize: '10px',
+          fontWeight: 600,
+          fontFamily: "'Inter', system-ui, sans-serif",
+          background: 'rgba(0,0,0,0.8)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          padding: '3px 8px',
+          borderRadius: '6px',
+          border: `1px solid ${color}66`,
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none' as const,
+          userSelect: 'none' as const,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        }}
+      >
+        {amenity.icon} {amenity.name}
+      </Html>
+    </group>
+  );
+}
+
+function AmenityMarkers({ activeTypes }: { activeTypes: Set<AmenityType> }) {
+  const amenities = useMemo(() => {
+    if (activeTypes.size === 0) return [];
+    return getAllAmenities().filter((a) => activeTypes.has(a.type));
+  }, [activeTypes]);
+
+  if (amenities.length === 0) return null;
+
+  return (
+    <group>
+      {amenities.map((a) => (
+        <AmenityMarker key={a.id} amenity={a} />
+      ))}
+    </group>
+  );
+}
+
 // ─── Inner scene ─────────────────────────────────────────────────────────────
 
 function Scene({
   zone,
   uniqueGates,
+  activeAmenities,
 }: {
   zone: Zone | null;
   uniqueGates: Gate[];
+  activeAmenities: Set<AmenityType>;
 }) {
   return (
     <>
@@ -1072,6 +1140,9 @@ function Scene({
         <GateMarker key={gate.id} gate={gate} />
       ))}
 
+      {/* ── Amenity markers (togglable) ──────────────────────────────────── */}
+      <AmenityMarkers activeTypes={activeAmenities} />
+
       {/* ── Animated path when a zone is found ───────────────────────────── */}
       {zone && <PathLine key={zone.id} zone={zone} />}
 
@@ -1092,9 +1163,11 @@ function Scene({
 export default function StadiumScene({
   zone,
   uniqueGates,
+  activeAmenities = new Set(),
 }: {
   zone: Zone | null;
   uniqueGates: Gate[];
+  activeAmenities?: Set<AmenityType>;
 }) {
   return (
     <Canvas
@@ -1102,7 +1175,7 @@ export default function StadiumScene({
       camera={{ position: [0, 25, 35], fov: 50 }}
       style={{ background: 'transparent' }}
     >
-      <Scene zone={zone} uniqueGates={uniqueGates} />
+      <Scene zone={zone} uniqueGates={uniqueGates} activeAmenities={activeAmenities} />
     </Canvas>
   );
 }
