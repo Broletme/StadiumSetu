@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import {
   BASE_RADIUS_X, BASE_RADIUS_Z,
   CONCOURSE_INNER_SCALE, CONCOURSE_OUTER_SCALE,
@@ -80,6 +80,73 @@ export default function StadiumMap2D({
   );
   const effectiveHighlight = highlightedType ?? localHighlighted;
 
+  // ── Zoom / Pan state ────────────────────────────────────────────────────────
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const isDragging = useRef(false);
+  const dragStart = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+
+    const ZOOM_SENSITIVITY = 0.0003;
+    const delta = -e.deltaY * ZOOM_SENSITIVITY;
+    setTransform((prev) => {
+      const newScale = Math.min(8, Math.max(0.5, prev.scale * (1 + delta)));
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const cx = (mouseX / rect.width) * 2 - 1;
+      const cy = (mouseY / rect.height) * 2 - 1;
+      const scaleRatio = newScale / prev.scale;
+      const newX = cx * VIEW_EXTENT * (1 - scaleRatio) + prev.x * scaleRatio;
+      const newY = cy * VIEW_EXTENT * (1 - scaleRatio) + prev.y * scaleRatio;
+      return { x: newX, y: newY, scale: newScale };
+    });
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    setCursorState('grabbing');
+    setTransform((prev) => {
+      isDragging.current = true;
+      dragStart.current = { x: e.clientX, y: e.clientY, tx: prev.x, ty: prev.y };
+      return prev;
+    });
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current || !dragStart.current) return;
+    const start = dragStart.current;
+    const dx = (e.clientX - start.x) / VIEW_EXTENT;
+    const dy = (e.clientY - start.y) / VIEW_EXTENT;
+    setTransform((prev) => ({
+      ...prev,
+      x: start.tx + dx / prev.scale * VIEW_EXTENT * 0.08,
+      y: start.ty + dy / prev.scale * VIEW_EXTENT * 0.08,
+    }));
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false;
+    dragStart.current = null;
+    setCursorState('grab');
+  }, []);
+
+  useEffect(() => {
+    const onUp = () => {
+      isDragging.current = false;
+      dragStart.current = null;
+      setCursorState('grab');
+    };
+    window.addEventListener('mouseup', onUp);
+    return () => window.removeEventListener('mouseup', onUp);
+  }, []);
+
+  const [cursorState, setCursorState] = useState<'grab' | 'grabbing'>('grab');
+
   const activeList = useMemo(
     () => getAllAmenities().filter((a) => activeAmenities.has(a.type)),
     [activeAmenities],
@@ -100,10 +167,22 @@ export default function StadiumMap2D({
 
   return (
     <svg
+      ref={svgRef}
       viewBox={`${-VIEW_EXTENT} ${-VIEW_EXTENT} ${VIEW_EXTENT * 2} ${VIEW_EXTENT * 2}`}
       preserveAspectRatio="xMidYMid meet"
-      style={{ width: '100%', height: '100%', display: 'block' }}
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'block',
+        cursor: cursorState,
+        userSelect: cursorState === 'grabbing' ? 'none' : undefined,
+      }}
     >
+      <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
       <defs>
         <radialGradient id="pitchGrad" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#14532d" />
@@ -393,7 +472,6 @@ export default function StadiumMap2D({
           {/* Tooltip background */}
           <rect
             x={(() => {
-              // Position tooltip near the marker
               const [bx] = bowlPosition(
                 hoveredItem.amenity.angle_deg,
                 hoveredItem.amenity.radiusScale,
@@ -472,6 +550,7 @@ export default function StadiumMap2D({
           </text>
         </>
       )}
+      </g>
     </svg>
   );
 }

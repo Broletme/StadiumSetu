@@ -205,7 +205,7 @@ export default function FanMapPage() {
           />
         </div>
         <p style={styles.hint}>
-          Hover over markers for details · {activeAmenities.size} facility type
+          Hover over markers for details · Scroll to zoom · Drag to pan · {activeAmenities.size} facility type
           {activeAmenities.size !== 1 ? 's' : ''} shown
         </p>
       </div>
@@ -217,7 +217,7 @@ export default function FanMapPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   root: {
-    minHeight: '100vh',
+    height: '100vh',
     display: 'flex',
     flexDirection: 'row',
     background: '#0a0a0f',
@@ -225,6 +225,7 @@ const styles: Record<string, React.CSSProperties> = {
       'radial-gradient(ellipse 80% 60% at 20% -10%, rgba(99,102,241,0.18) 0%, transparent 65%)',
     fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
     color: '#f1f5f9',
+    overflow: 'hidden',
   },
 
   // ── Left panel ─────────────────────────────────────────────────────────────
@@ -459,6 +460,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: '3rem',
+    overflow: 'hidden',
   },
   hint: {
     position: 'absolute',
