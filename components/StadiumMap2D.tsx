@@ -21,11 +21,8 @@ import {
 
 // ─── Coordinate mapping ──────────────────────────────────────────────────────
 
-const MAX_SCALE = UPPER_OUTER_SCALE + 0.65;
-const VIEW_EXTENT = Math.max(
-  BASE_RADIUS_X * MAX_SCALE,
-  BASE_RADIUS_Z * MAX_SCALE,
-);
+const VIEW_EXTENT_X = BASE_RADIUS_X * (UPPER_OUTER_SCALE + 0.65);
+const VIEW_EXTENT_Y = BASE_RADIUS_Z * (UPPER_OUTER_SCALE + 0.70);
 
 function toSvg(bx: number, bz: number): { sx: number; sy: number } {
   return { sx: bx, sy: -bz };
@@ -46,8 +43,8 @@ export type StadiumMap2DProps = {
 
 // ─── SVG config ──────────────────────────────────────────────────────────────
 
-const SECTION_LABEL_SCALE = UPPER_OUTER_SCALE + 0.45;
-const GATE_SCALE_2D = CONCOURSE_OUTER_SCALE + 0.30;
+const SECTION_LABEL_SCALE = (UPPER_INNER_SCALE + UPPER_OUTER_SCALE) / 2;
+const GATE_SCALE_2D = CONCOURSE_OUTER_SCALE + 0.42;
 
 // Hardcoded gate data for the 2D map (matches the stadium design)
 const GATE_NAMES: { name: string; angle: number }[] = [
@@ -101,8 +98,8 @@ export default function StadiumMap2D({
       const cx = (mouseX / rect.width) * 2 - 1;
       const cy = (mouseY / rect.height) * 2 - 1;
       const scaleRatio = newScale / prev.scale;
-      const newX = cx * VIEW_EXTENT * (1 - scaleRatio) + prev.x * scaleRatio;
-      const newY = cy * VIEW_EXTENT * (1 - scaleRatio) + prev.y * scaleRatio;
+      const newX = cx * VIEW_EXTENT_X * (1 - scaleRatio) + prev.x * scaleRatio;
+      const newY = cy * VIEW_EXTENT_Y * (1 - scaleRatio) + prev.y * scaleRatio;
       return { x: newX, y: newY, scale: newScale };
     });
   }, []);
@@ -120,12 +117,12 @@ export default function StadiumMap2D({
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging.current || !dragStart.current) return;
     const start = dragStart.current;
-    const dx = (e.clientX - start.x) / VIEW_EXTENT;
-    const dy = (e.clientY - start.y) / VIEW_EXTENT;
+    const dx = (e.clientX - start.x) / VIEW_EXTENT_X;
+    const dy = (e.clientY - start.y) / VIEW_EXTENT_Y;
     setTransform((prev) => ({
       ...prev,
-      x: start.tx + dx / prev.scale * VIEW_EXTENT * 0.08,
-      y: start.ty + dy / prev.scale * VIEW_EXTENT * 0.08,
+      x: start.tx + (dx / prev.scale) * VIEW_EXTENT_X * 0.08,
+      y: start.ty + (dy / prev.scale) * VIEW_EXTENT_Y * 0.08,
     }));
   }, []);
 
@@ -168,7 +165,7 @@ export default function StadiumMap2D({
   return (
     <svg
       ref={svgRef}
-      viewBox={`${-VIEW_EXTENT} ${-VIEW_EXTENT} ${VIEW_EXTENT * 2} ${VIEW_EXTENT * 2}`}
+      viewBox={`${-VIEW_EXTENT_X} ${-VIEW_EXTENT_Y} ${VIEW_EXTENT_X * 2} ${VIEW_EXTENT_Y * 2}`}
       preserveAspectRatio="xMidYMid meet"
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
@@ -325,20 +322,42 @@ export default function StadiumMap2D({
       {/* ── Gate markers ────────────────────────────────────────────────── */}
       {GATE_NAMES.map((gate) => {
         const { sx, sy } = angleToSvg(gate.angle, GATE_SCALE_2D);
+        const rad = (gate.angle * Math.PI) / 180;
+        const dirX = Math.cos(rad);
+        const dirY = -Math.sin(rad);
+        
+        const labelOffset = 0.45;
+        const lx = sx + dirX * labelOffset;
+        const ly = sy + dirY * labelOffset + 0.08;
+        
+        const textAnchor = Math.abs(dirX) < 0.3 ? 'middle' : dirX > 0 ? 'start' : 'end';
+
         return (
-          <g key={gate.name}>
+          <g key={gate.name} style={{ cursor: 'pointer' }}>
             <circle
-              cx={sx} cy={sy} r={0.25}
+              cx={sx} cy={sy} r={0.28}
               fill="#f59e0b"
-              opacity={0.8}
+              stroke="#ffffff"
+              strokeWidth={0.04}
+              opacity={0.95}
+              style={{ filter: 'drop-shadow(0 2px 6px rgba(245,158,11,0.5))' }}
             />
             <text
-              x={sx} y={sy + 0.55}
+              x={sx} y={sy + 0.08}
               textAnchor="middle"
-              fill="rgba(245,158,11,0.7)"
-              fontSize={0.3}
+              fontSize={0.22}
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
+            >
+              🚪
+            </text>
+            <text
+              x={lx} y={ly}
+              textAnchor={textAnchor}
+              fill="#fbbf24"
+              fontSize={0.28}
               fontFamily="'Inter', system-ui, sans-serif"
-              fontWeight={600}
+              fontWeight={700}
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
               {gate.name}
             </text>
@@ -354,12 +373,12 @@ export default function StadiumMap2D({
         return (
           <text
             key={`sl-${i}`}
-            x={sx} y={sy + 0.12}
+            x={sx} y={sy + 0.08}
             textAnchor="middle"
-            fill="rgba(255,255,255,0.2)"
-            fontSize={0.3}
+            fill="rgba(255,255,255,0.4)"
+            fontSize={0.24}
             fontFamily="'Inter', system-ui, sans-serif"
-            fontWeight={500}
+            fontWeight={600}
             style={{ pointerEvents: 'none', userSelect: 'none' }}
           >
             {label}
@@ -400,8 +419,9 @@ export default function StadiumMap2D({
         const color = AMENITY_TYPE_COLORS[a.type];
         const isHighlighted = effectiveHighlight === a.type;
         const isHovered = hoveredItem?.id === a.id;
-        const r = isHighlighted ? 0.35 : 0.22;
-        const glowR = isHighlighted ? 0.7 : 0;
+        const isActive = isHighlighted || isHovered;
+        const r = isActive ? 0.38 : 0.28;
+        const glowR = r + 0.22;
 
         return (
           <g
@@ -416,33 +436,30 @@ export default function StadiumMap2D({
             }}
             style={{ cursor: 'pointer' }}
           >
-            {/* Glow ring */}
-            {isHighlighted && (
+            {/* Outer glow ring on active / hover */}
+            {isActive && (
               <circle
                 cx={sx} cy={sy} r={glowR}
-                fill={color} opacity={0.12}
+                fill={color} opacity={0.25}
               />
             )}
-            {/* Outer dot */}
+            {/* Main Marker Circle */}
             <circle
               cx={sx} cy={sy} r={r}
               fill={color}
-              opacity={isHighlighted ? 1 : 0.85}
-              stroke={isHighlighted ? '#fff' : 'none'}
-              strokeWidth={isHighlighted ? 0.08 : 0}
-              filter={isHighlighted ? 'url(#glow)' : undefined}
+              opacity={isActive ? 1 : 0.88}
+              stroke="#ffffff"
+              strokeWidth={isActive ? 0.06 : 0.03}
+              filter={isActive ? 'url(#glow)' : undefined}
             />
-            {/* Label */}
+            {/* Centered Emoji Icon */}
             <text
-              x={sx} y={sy - r - 0.25}
+              x={sx} y={sy + 0.09}
               textAnchor="middle"
-              fill={isHighlighted ? '#f1f5f9' : 'rgba(255,255,255,0.65)'}
-              fontSize={isHighlighted ? 0.28 : 0.24}
-              fontFamily="'Inter', system-ui, sans-serif"
-              fontWeight={isHighlighted ? 600 : 400}
+              fontSize={isActive ? 0.32 : 0.24}
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
-              {a.icon} {a.name}
+              {a.icon}
             </text>
           </g>
         );
@@ -450,7 +467,7 @@ export default function StadiumMap2D({
 
       {/* ── Compass / scale ─────────────────────────────────────────────── */}
       <g
-        transform={`translate(${-VIEW_EXTENT + 1.5}, ${VIEW_EXTENT - 1.2})`}
+        transform={`translate(${-VIEW_EXTENT_X + 1.5}, ${VIEW_EXTENT_Y - 1.2})`}
         opacity={0.15}
       >
         <line x1={0} y1={0} x2={0} y2={-0.8} stroke="white" strokeWidth={0.08} />
@@ -467,89 +484,46 @@ export default function StadiumMap2D({
       </g>
 
       {/* ── Tooltip on hover ────────────────────────────────────────────── */}
-      {hoveredItem && (
-        <>
-          {/* Tooltip background */}
-          <rect
-            x={(() => {
-              const [bx] = bowlPosition(
-                hoveredItem.amenity.angle_deg,
-                hoveredItem.amenity.radiusScale,
-              );
-              const tx = bx;
-              const tooltipW = 3.5;
-              return Math.max(
-                -VIEW_EXTENT + 0.3,
-                Math.min(
-                  VIEW_EXTENT - tooltipW - 0.3,
-                  tx - tooltipW / 2,
-                ),
-              );
-            })()}
-            y={(() => {
-              const [, bz] = bowlPosition(
-                hoveredItem.amenity.angle_deg,
-                hoveredItem.amenity.radiusScale,
-              );
-              return -bz - 1.8;
-            })()}
-            width={3.5}
-            height={1.2}
-            rx={0.3}
-            fill="rgba(15,23,42,0.9)"
-            stroke={AMENITY_TYPE_COLORS[hoveredItem.amenity.type]}
-            strokeWidth={0.1}
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          />
-          <text
-            x={(() => {
-              const [bx] = bowlPosition(
-                hoveredItem.amenity.angle_deg,
-                hoveredItem.amenity.radiusScale,
-              );
-              return bx;
-            })()}
-            y={(() => {
-              const [, bz] = bowlPosition(
-                hoveredItem.amenity.angle_deg,
-                hoveredItem.amenity.radiusScale,
-              );
-              return -bz - 1.5;
-            })()}
-            textAnchor="middle"
-            fill="#f1f5f9"
-            fontSize={0.28}
-            fontFamily="'Inter', system-ui, sans-serif"
-            fontWeight={600}
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >
-            {hoveredItem.amenity.icon} {hoveredItem.amenity.name}
-          </text>
-          <text
-            x={(() => {
-              const [bx] = bowlPosition(
-                hoveredItem.amenity.angle_deg,
-                hoveredItem.amenity.radiusScale,
-              );
-              return bx;
-            })()}
-            y={(() => {
-              const [, bz] = bowlPosition(
-                hoveredItem.amenity.angle_deg,
-                hoveredItem.amenity.radiusScale,
-              );
-              return -bz - 1.15;
-            })()}
-            textAnchor="middle"
-            fill="#94a3b8"
-            fontSize={0.22}
-            fontFamily="'Inter', system-ui, sans-serif"
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >
-            {AMENITY_TYPE_LABELS[hoveredItem.amenity.type]}
-          </text>
-        </>
-      )}
+      {hoveredItem && (() => {
+        const [bx, bz] = bowlPosition(
+          hoveredItem.amenity.angle_deg,
+          hoveredItem.amenity.radiusScale,
+        );
+        const { sx, sy } = toSvg(bx, bz);
+        const color = AMENITY_TYPE_COLORS[hoveredItem.amenity.type];
+        const titleText = `${hoveredItem.amenity.icon}  ${hoveredItem.amenity.name}`;
+        
+        const pillWidth = Math.max(2.8, titleText.length * 0.14 + 0.6);
+        const pillHeight = 0.65;
+        const px = Math.max(-VIEW_EXTENT_X + 0.3, Math.min(VIEW_EXTENT_X - pillWidth - 0.3, sx - pillWidth / 2));
+        const py = sy - 1.1;
+
+        return (
+          <g style={{ pointerEvents: 'none', userSelect: 'none' }}>
+            <rect
+              x={px}
+              y={py}
+              width={pillWidth}
+              height={pillHeight}
+              rx={0.2}
+              fill="rgba(10, 14, 26, 0.95)"
+              stroke={color}
+              strokeWidth={0.05}
+            />
+            <text
+              x={px + pillWidth / 2}
+              y={py + pillHeight / 2 + 0.08}
+              textAnchor="middle"
+              fill="#f8fafc"
+              fontSize={0.26}
+              fontFamily="'Inter', system-ui, sans-serif"
+              fontWeight={600}
+            >
+              {titleText}
+            </text>
+          </g>
+        );
+      })()}
       </g>
     </svg>
   );

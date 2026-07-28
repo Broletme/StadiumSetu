@@ -257,7 +257,7 @@ const AMENITIES_DATA: Amenity[] = (() => {
       name: 'Emergency Exit',
       icon: AMENITY_ICONS.exit,
       angle_deg: sectionAngleDeg(idx),
-      radiusScale: CONCOURSE_OUTER_SCALE + 0.18,
+      radiusScale: CONCOURSE_OUTER_SCALE + 0.08,
       y: AMENITY_Y,
     });
   }

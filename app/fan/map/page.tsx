@@ -86,7 +86,12 @@ export default function FanMapPage() {
         {/* Amenity toggles */}
         <div style={styles.amenitySection}>
           <div style={styles.amenityHeader}>
-            <h3 style={styles.amenityTitle}>Facilities</h3>
+            <div style={styles.titleGroup}>
+              <h3 style={styles.amenityTitle}>Facilities</h3>
+              <span style={styles.countBadge}>
+                {activeAmenities.size}/{ALL_TYPES.length}
+              </span>
+            </div>
             <button onClick={toggleAll} style={styles.amenityToggleAll}>
               {activeAmenities.size > 0 ? 'Hide All' : 'Show All'}
             </button>
@@ -95,101 +100,88 @@ export default function FanMapPage() {
             {ALL_TYPES.map((type) => {
               const isActive = activeAmenities.has(type);
               const isHighlighted = highlightedType === type;
+              const themeColor = AMENITY_TYPE_COLORS[type];
+
               return (
-                <label
+                <div
                   key={type}
-                  style={{
-                    ...styles.amenityItem,
-                    background: isHighlighted
-                      ? 'rgba(255,255,255,0.06)'
-                      : 'transparent',
-                  }}
+                  onClick={() => toggleAmenity(type)}
                   onMouseEnter={() => setHighlightedType(type)}
                   onMouseLeave={() => setHighlightedType(null)}
+                  style={{
+                    ...styles.amenityCard,
+                    background: isActive
+                      ? `linear-gradient(90deg, ${themeColor}1a 0%, rgba(255,255,255,0.03) 100%)`
+                      : isHighlighted
+                      ? 'rgba(255,255,255,0.05)'
+                      : 'rgba(255,255,255,0.02)',
+                    borderColor: isActive
+                      ? `${themeColor}55`
+                      : isHighlighted
+                      ? 'rgba(255,255,255,0.15)'
+                      : 'rgba(255,255,255,0.06)',
+                    boxShadow: isActive
+                      ? `0 2px 10px ${themeColor}18`
+                      : 'none',
+                    transform: isHighlighted ? 'translateY(-1px)' : 'none',
+                  }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={() => toggleAmenity(type)}
-                    style={styles.amenityCheckbox}
-                  />
-                  <span
+                  <div
                     style={{
-                      ...styles.amenityDot,
-                      background: AMENITY_TYPE_COLORS[type],
-                      boxShadow:
-                        isActive || isHighlighted
-                          ? `0 0 6px ${AMENITY_TYPE_COLORS[type]}66`
-                          : 'none',
+                      ...styles.iconContainer,
+                      background: isActive
+                        ? `${themeColor}28`
+                        : 'rgba(255,255,255,0.05)',
+                      borderColor: isActive
+                        ? `${themeColor}66`
+                        : 'rgba(255,255,255,0.08)',
+                      boxShadow: isActive
+                        ? `0 0 8px ${themeColor}44`
+                        : 'none',
                     }}
-                  />
+                  >
+                    <span style={styles.iconSymbol}>{AMENITY_ICONS[type]}</span>
+                  </div>
+
                   <span
                     style={{
                       ...styles.amenityLabel,
-                      color: isHighlighted ? '#f1f5f9' : undefined,
+                      color: isActive ? '#f8fafc' : '#64748b',
+                      fontWeight: isActive ? 600 : 500,
                     }}
                   >
-                    {AMENITY_ICONS[type]} {AMENITY_TYPE_LABELS[type]}
+                    {AMENITY_TYPE_LABELS[type]}
                   </span>
-                </label>
+
+                  {/* Custom Toggle Switch */}
+                  <div
+                    style={{
+                      ...styles.toggleSwitch,
+                      background: isActive
+                        ? themeColor
+                        : 'rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        ...styles.toggleKnob,
+                        transform: isActive
+                          ? 'translateX(14px)'
+                          : 'translateX(2px)',
+                      }}
+                    />
+                  </div>
+                </div>
               );
             })}
           </div>
           {activeAmenities.size === 0 && (
-            <p style={styles.hint}>
+            <p style={styles.hintText}>
               Toggle facilities above to see their locations on the map
             </p>
           )}
         </div>
 
-        {/* Map hint */}
-        <div style={styles.hintBox}>
-          <p style={styles.hintText}>
-            Hover over any facility in the list to highlight it on the map
-          </p>
-        </div>
-
-        {/* Legend */}
-        <div style={styles.legend}>
-          <div style={styles.legendTitle}>Map Legend</div>
-          {ALL_TYPES.map((type) => (
-            <div key={type} style={styles.legendItem}>
-              <span
-                style={{
-                  ...styles.legendDot,
-                  background: AMENITY_TYPE_COLORS[type],
-                }}
-              />
-              <span>{AMENITY_TYPE_LABELS[type]}</span>
-            </div>
-          ))}
-          <div style={styles.legendItem}>
-            <span style={{ ...styles.legendDot, background: '#f59e0b' }} />
-            <span>Gate / Entrance</span>
-          </div>
-          <div style={styles.legendItem}>
-            <span
-              style={{
-                ...styles.legendDot,
-                background: 'none',
-                border: '1px solid rgba(255,255,255,0.2)',
-              }}
-            />
-            <span>Sections 1-24</span>
-          </div>
-        </div>
-
-        {/* Section reference */}
-        <div style={styles.sectionRef}>
-          <span style={styles.sectionRefLabel}>Lower Tier</span>
-          <span style={{ ...styles.sectionRefBadge, background: 'rgba(79,70,229,0.2)', color: '#818cf8' }}>
-            L01-L24
-          </span>
-          <span style={styles.sectionRefLabel}>Upper Tier</span>
-          <span style={{ ...styles.sectionRefBadge, background: 'rgba(124,58,237,0.2)', color: '#a78bfa' }}>
-            U01-U24
-          </span>
-        </div>
       </div>
 
       {/* ── Map area ────────────────────────────────────────────────────── */}
@@ -300,134 +292,103 @@ const styles: Record<string, React.CSSProperties> = {
 
   // ── Amenity toggles ───────────────────────────────────────────────────────
   amenitySection: {
-    marginBottom: '1rem',
+    marginBottom: '1.5rem',
   },
   amenityHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '0.75rem',
+    marginBottom: '0.85rem',
+  },
+  titleGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
   },
   amenityTitle: {
-    fontSize: '0.85rem',
+    fontSize: '0.9rem',
     fontWeight: 700,
-    color: '#e2e8f0',
+    color: '#f8fafc',
     margin: 0,
     letterSpacing: '0.02em',
   },
+  countBadge: {
+    fontSize: '0.7rem',
+    fontWeight: 600,
+    padding: '0.1rem 0.45rem',
+    borderRadius: '12px',
+    background: 'rgba(99, 102, 241, 0.15)',
+    color: '#818cf8',
+    border: '1px solid rgba(99, 102, 241, 0.3)',
+  },
   amenityToggleAll: {
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
     borderRadius: '6px',
     color: '#94a3b8',
     fontSize: '0.72rem',
     fontWeight: 600,
-    padding: '0.2rem 0.6rem',
+    padding: '0.25rem 0.65rem',
     cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   amenityGrid: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.3rem',
+    gap: '0.45rem',
   },
-  amenityItem: {
+  amenityCard: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.45rem',
+    gap: '0.65rem',
     cursor: 'pointer',
-    padding: '0.3rem 0.35rem',
-    borderRadius: '6px',
-    transition: 'background 0.15s',
+    padding: '0.55rem 0.75rem',
+    borderRadius: '10px',
+    border: '1px solid rgba(255, 255, 255, 0.06)',
+    transition: 'all 0.2s ease',
     userSelect: 'none' as const,
   },
-  amenityCheckbox: {
-    accentColor: '#6366f1',
-    cursor: 'pointer',
-    width: '13px',
-    height: '13px',
+  iconContainer: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '7px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
     flexShrink: 0,
+    transition: 'all 0.2s ease',
   },
-  amenityDot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    flexShrink: 0,
-    display: 'inline-block',
-    transition: 'box-shadow 0.2s',
+  iconSymbol: {
+    fontSize: '0.95rem',
+    lineHeight: 1,
   },
   amenityLabel: {
-    color: '#94a3b8',
     fontSize: '0.78rem',
-    fontWeight: 500,
+    flex: 1,
     lineHeight: 1.3,
+    transition: 'color 0.2s ease',
   },
-
-  // ── Hint box ───────────────────────────────────────────────────────────────
-  hintBox: {
-    padding: '0.65rem 0.75rem',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '8px',
-    marginBottom: '1.25rem',
-  },
-  hintText: {
-    color: '#64748b',
-    fontSize: '0.75rem',
-    margin: 0,
-    lineHeight: 1.4,
-    fontStyle: 'italic',
-  },
-
-  // ── Legend ─────────────────────────────────────────────────────────────────
-  legend: {
-    paddingTop: '1.25rem',
-    borderTop: '1px solid rgba(255,255,255,0.06)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.4rem',
-  },
-  legendTitle: {
-    fontSize: '0.82rem',
-    fontWeight: 700,
-    color: '#e2e8f0',
-    marginBottom: '0.2rem',
-  },
-  legendItem: {
+  toggleSwitch: {
+    width: '28px',
+    height: '16px',
+    borderRadius: '10px',
+    position: 'relative',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem',
-    color: '#64748b',
-    fontSize: '0.75rem',
-  },
-  legendDot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
     flexShrink: 0,
-    display: 'inline-block',
+    transition: 'background-color 0.2s ease',
+  },
+  toggleKnob: {
+    width: '12px',
+    height: '12px',
+    borderRadius: '50%',
+    background: '#ffffff',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
+    transition: 'transform 0.2s ease',
   },
 
-  // ── Section reference ─────────────────────────────────────────────────────
-  sectionRef: {
-    marginTop: 'auto',
-    paddingTop: '1rem',
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '0.4rem',
-    alignItems: 'center',
-  },
-  sectionRefLabel: {
-    color: '#64748b',
-    fontSize: '0.72rem',
-    fontWeight: 500,
-  },
-  sectionRefBadge: {
-    fontSize: '0.7rem',
-    fontWeight: 600,
-    padding: '0.15rem 0.45rem',
-    borderRadius: '4px',
-    marginRight: '0.3rem',
-  },
+
 
   // ── Map area ───────────────────────────────────────────────────────────────
   mapWrapper: {
@@ -459,7 +420,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '3rem',
+    padding: '0.75rem 1.5rem',
     overflow: 'hidden',
   },
   hint: {
