@@ -168,7 +168,7 @@ function Fan3DContent() {
           </Link>
           <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
             <Link href="/fan/map" style={styles.map2dButton}>
-              🗺 Map
+              🗺 2D Map
             </Link>
             <button
               onClick={() => setShowGuide(true)}
