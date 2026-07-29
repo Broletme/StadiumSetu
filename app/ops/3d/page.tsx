@@ -28,10 +28,23 @@ interface Gate {
   lng: number | null;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 function buildApiUrl(path: string) {
-  return `${API_BASE_URL ?? ''}${path}`;
+  return `${API_BASE_URL}${path}`;
+}
+
+async function safeFetchApi(path: string, init?: RequestInit): Promise<Response> {
+  const primaryUrl = buildApiUrl(path);
+  try {
+    return await fetch(primaryUrl, init);
+  } catch (err) {
+    if (primaryUrl.includes('localhost:3001')) {
+      const fallbackUrl = primaryUrl.replace('localhost:3001', '127.0.0.1:3001');
+      return await fetch(fallbackUrl, init);
+    }
+    throw err;
+  }
 }
 
 function compareSections(a: CongestionRow, b: CongestionRow) {
@@ -48,6 +61,10 @@ const HeatmapScene = dynamic(() => import('./HeatmapScene'), {
       <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>Loading 3D scene…</p>
     </div>
   ),
+});
+
+const Minimap = dynamic(() => import('./Minimap'), {
+  ssr: false,
 });
 
 const LEVEL_COLORS: Record<CongestionLevel, string> = {
@@ -192,8 +209,8 @@ function Ops3DContent() {
     setDataLoading(true);
     try {
       const [congestionRes, gatesRes] = await Promise.all([
-        fetch(buildApiUrl('/congestion'), { cache: 'no-store' }),
-        fetch(buildApiUrl('/gates'), { cache: 'no-store' }),
+        safeFetchApi('/congestion', { cache: 'no-store' }),
+        safeFetchApi('/gates', { cache: 'no-store' }),
       ]);
       if (congestionRes.ok) {
         const data: CongestionRow[] = await congestionRes.json();
@@ -321,6 +338,16 @@ function Ops3DContent() {
       <PriorityPanel sections={sections} focusedSectionNumber={focusedSectionNumber} onSelect={setFocusedSectionNumber} />
       <div style={{ width: '100%', height: '100%' }}>
         <HeatmapScene sections={sections} gates={displayGates} focusSectionNumber={focusedSectionNumber} />
+      </div>
+
+      <div style={{
+        position: 'absolute', bottom: 80, right: 16, zIndex: 10,
+        width: 140, height: 140, borderRadius: 10, overflow: 'hidden',
+        border: '1px solid rgba(255,255,255,0.1)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+        pointerEvents: 'none',
+      }}>
+        <Minimap sections={sections} gates={displayGates} />
       </div>
     </main>
   );

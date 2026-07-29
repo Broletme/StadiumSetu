@@ -103,8 +103,9 @@ function Fan3DContent() {
     setSearchResult(null);
 
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/zones/seat/${encodeURIComponent(query.trim())}`,
+        `${baseUrl}/zones/seat/${encodeURIComponent(query.trim())}`,
       );
       if (!res.ok) throw new Error('Not found');
 

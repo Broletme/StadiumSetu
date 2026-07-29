@@ -34,10 +34,23 @@ interface SimulateSpikeResult {
   newAlerts: AlertRow[];
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 function buildApiUrl(path: string) {
-  return `${API_BASE_URL ?? ''}${path}`;
+  return `${API_BASE_URL}${path}`;
+}
+
+async function safeFetchApi(path: string, init?: RequestInit): Promise<Response> {
+  const primaryUrl = buildApiUrl(path);
+  try {
+    return await fetch(primaryUrl, init);
+  } catch (err) {
+    if (primaryUrl.includes('localhost:3001')) {
+      const fallbackUrl = primaryUrl.replace('localhost:3001', '127.0.0.1:3001');
+      return await fetch(fallbackUrl, init);
+    }
+    throw err;
+  }
 }
 
 function compareSections(a: CongestionRow, b: CongestionRow) {
@@ -354,8 +367,8 @@ export default function OpsDashboardPage() {
 
     try {
       const [congestionResponse, alertsResponse] = await Promise.all([
-        fetch(buildApiUrl('/congestion'), { cache: 'no-store' }),
-        fetch(buildApiUrl('/alerts'), { cache: 'no-store' }),
+        safeFetchApi('/congestion', { cache: 'no-store' }),
+        safeFetchApi('/alerts', { cache: 'no-store' }),
       ]);
 
       if (!congestionResponse.ok) {
@@ -466,7 +479,7 @@ export default function OpsDashboardPage() {
 
     try {
       const endpoint = action === 'spike' ? '/congestion/simulate-spike' : '/congestion/reset';
-      const response = await fetch(buildApiUrl(endpoint), { method: 'POST' });
+      const response = await safeFetchApi(endpoint, { method: 'POST' });
 
       if (!response.ok) {
         throw new Error(`${action === 'spike' ? 'Simulate spike' : 'Reset'} failed (${response.status})`);
@@ -508,14 +521,14 @@ export default function OpsDashboardPage() {
 
     try {
       if (group.top.section_id) {
-        await fetch(
-          buildApiUrl(`/alerts/resolve-by-section/${group.top.section_id}`),
+        await safeFetchApi(
+          `/alerts/resolve-by-section/${group.top.section_id}`,
           { method: 'POST' },
         );
       } else {
         await Promise.all(
           [group.top, ...group.rest].map((a) =>
-            fetch(buildApiUrl(`/alerts/${a.id}/resolve`), { method: 'PATCH' }),
+            safeFetchApi(`/alerts/${a.id}/resolve`, { method: 'PATCH' }),
           ),
         );
       }
