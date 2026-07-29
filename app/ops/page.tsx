@@ -68,40 +68,28 @@ function relativeTime(value: string) {
 
   const seconds = Math.max(0, Math.floor((now - then) / 1000));
   if (seconds < 10) return 'just now';
-  if (seconds < 60) return `${seconds} sec ago`;
+  if (seconds < 60) return `${seconds}s ago`;
 
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60) return `${minutes}m ago`;
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hr ago`;
+  if (hours < 24) return `${hours}h ago`;
 
   const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
-}
-
-function severityClasses(severity: CongestionLevel) {
-  if (severity === 'high') {
-    return 'border-red-400/[0.5] bg-red-500/[0.16] text-red-200';
-  }
-
-  if (severity === 'medium') {
-    return 'border-amber-300/[0.5] bg-amber-400/[0.16] text-amber-100';
-  }
-
-  return 'border-emerald-400/[0.45] bg-emerald-500/[0.14] text-emerald-100';
+  return `${days}d ago`;
 }
 
 function StadiumLogo() {
   return (
-    <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] border border-indigo-400/25 bg-indigo-500/[0.12]">
-      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#opsLogoGradient)" />
-        <path d="M16 8l-8 4.5v7L16 24l8-4.5v-7L16 8z" fill="rgba(255,255,255,0.15)" />
+    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/20 via-indigo-600/10 to-purple-600/20 shadow-md shadow-indigo-950/50">
+      <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#opsLogoGrad)" />
+        <path d="M16 8l-8 4.5v7L16 24l8-4.5v-7L16 8z" fill="rgba(255,255,255,0.25)" />
         <defs>
-          <linearGradient id="opsLogoGradient" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+          <linearGradient id="opsLogoGrad" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
             <stop stopColor="#6366f1" />
-            <stop offset="1" stopColor="#8b5cf6" />
+            <stop offset="1" stopColor="#a855f7" />
           </linearGradient>
         </defs>
       </svg>
@@ -109,7 +97,7 @@ function StadiumLogo() {
   );
 }
 
-// ─── Section Card Grid ────────────────────────────────────────────────────────
+// ─── Section Card Component ───────────────────────────────────────────────────
 
 function SectionCard({ section }: { section: CongestionRow }) {
   const [showDetail, setShowDetail] = useState(false);
@@ -118,32 +106,35 @@ function SectionCard({ section }: { section: CongestionRow }) {
   const showTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const dotColor =
-    section.level === 'high' ? 'bg-red-500'
-      : section.level === 'medium' ? 'bg-amber-500'
-        : 'bg-emerald-500';
+  // Density percentage estimate (max capacity ~300)
+  const densityPercent = Math.min(100, Math.round((section.device_count / 300) * 100));
 
-  const borderColor =
-    section.level === 'high' ? 'border-red-500/30 bg-red-500/[0.08]'
-      : section.level === 'medium' ? 'border-amber-400/20 bg-amber-400/[0.05]'
-        : 'border-emerald-400/15 bg-emerald-500/[0.04]';
+  const isHigh = section.level === 'high';
+  const isMedium = section.level === 'medium';
 
-  const pillColors =
-    section.level === 'high' ? 'border-red-400/[0.5] bg-red-500/[0.16] text-red-200'
-      : section.level === 'medium' ? 'border-amber-300/[0.5] bg-amber-400/[0.16] text-amber-100'
-        : 'border-emerald-400/[0.45] bg-emerald-500/[0.14] text-emerald-100';
+  const dotColor = isHigh
+    ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.9)] ring-2 ring-rose-500/30'
+    : isMedium
+      ? 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.9)] ring-2 ring-amber-400/30'
+      : 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-2 ring-emerald-400/30';
 
-  const popoverBorder = section.level === 'high'
-    ? 'rgba(248,113,113,0.3)'
-    : section.level === 'medium'
-      ? 'rgba(251,191,36,0.25)'
-      : 'rgba(52,211,153,0.2)';
+  const cardStyle = isHigh
+    ? 'border-rose-500/50 bg-gradient-to-b from-rose-950/40 via-slate-900/80 to-slate-950/90 text-rose-100 ops-card-high hover:border-rose-400 hover:shadow-lg hover:shadow-rose-950/50'
+    : isMedium
+      ? 'border-amber-500/40 bg-gradient-to-b from-amber-950/30 via-slate-900/70 to-slate-950/90 text-amber-100 hover:border-amber-400/60 hover:shadow-lg hover:shadow-amber-950/40'
+      : 'border-slate-800/90 bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-950/90 text-slate-200 hover:border-slate-700 hover:bg-slate-900/95';
 
-  const popoverShadow = section.level === 'high'
-    ? 'rgba(239,68,68,0.3)'
-    : section.level === 'medium'
-      ? 'rgba(251,191,36,0.2)'
-      : 'rgba(52,211,153,0.15)';
+  const progressBg = isHigh
+    ? 'bg-gradient-to-r from-rose-600 to-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.6)]'
+    : isMedium
+      ? 'bg-gradient-to-r from-amber-500 to-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.5)]'
+      : 'bg-gradient-to-r from-emerald-500 to-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.4)]';
+
+  const pillColors = isHigh
+    ? 'border-rose-500/40 bg-rose-500/20 text-rose-300'
+    : isMedium
+      ? 'border-amber-400/40 bg-amber-400/20 text-amber-300'
+      : 'border-emerald-400/40 bg-emerald-400/20 text-emerald-300';
 
   function show() {
     clearTimeout(hideTimerRef.current);
@@ -151,17 +142,17 @@ function SectionCard({ section }: { section: CongestionRow }) {
     showTimerRef.current = setTimeout(() => {
       if (cardRef.current) {
         const rect = cardRef.current.getBoundingClientRect();
-        setPosAbove(rect.top >= 180);
+        setPosAbove(rect.top >= 200);
       }
       setShowDetail(true);
-    }, 100);
+    }, 70);
   }
 
   function scheduleHide() {
     clearTimeout(showTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
       setShowDetail(false);
-    }, 150);
+    }, 120);
   }
 
   function cancelHide() {
@@ -176,91 +167,89 @@ function SectionCard({ section }: { section: CongestionRow }) {
   return (
     <div
       ref={cardRef}
-      className={`group relative rounded-md border p-2 ${section.level === 'high' && 'ops-card-high'
-        } ${borderColor}`}
+      className={`group relative rounded-xl border p-3 transition-all duration-200 cursor-pointer hover:-translate-y-1 ${cardStyle}`}
       onMouseEnter={show}
       onMouseLeave={scheduleHide}
     >
-      <div className="flex items-center justify-between">
-        <span className={`inline-block h-2 w-2 rounded-full ${dotColor}`} />
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${dotColor}`} />
+          <span className="text-xs font-extrabold tracking-tight text-white">{section.section_number}</span>
+        </div>
         <Link
           href={`/ops/3d?section=${section.section_number}`}
-          className="text-slate-600 opacity-0 transition-opacity hover:text-indigo-400 group-hover:opacity-100"
-          aria-label="View in 3D"
+          className="text-slate-400 opacity-0 transition-all hover:text-indigo-400 hover:scale-110 group-hover:opacity-100 p-0.5"
+          aria-label="Inspect 3D"
+          title="Inspect 3D"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
             <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
             <line x1="12" y1="22.08" x2="12" y2="12" />
           </svg>
         </Link>
       </div>
-      <div className="mt-1 text-sm font-bold text-slate-100">{section.section_number}</div>
-      <div className="text-[0.6rem] text-slate-500">{section.device_count} devices</div>
 
-      {/* ── Detail card popover ── */}
+      <div className="mt-2.5 flex items-baseline justify-between">
+        <div>
+          <span className="text-base font-black text-white tracking-tight">{section.device_count}</span>
+          <span className="ml-1 text-[0.65rem] text-slate-400 font-medium">dev</span>
+        </div>
+        <span className="text-[0.65rem] font-bold text-slate-400">{densityPercent}%</span>
+      </div>
+
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-950/80 border border-white/5 p-[0.5px]">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${progressBg}`}
+          style={{ width: `${Math.max(6, densityPercent)}%` }}
+        />
+      </div>
+
       <div
-        className={`absolute z-50 transition-all duration-150 ${posAbove ? 'bottom-full mb-2.5' : 'top-full mt-2.5'
-          } left-1/2 -translate-x-1/2 ${showDetail ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+        className={`absolute z-50 transition-all duration-200 ${posAbove ? 'bottom-full mb-3' : 'top-full mt-3'
+          } left-1/2 -translate-x-1/2 ${showDetail ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
           }`}
         style={{ transformOrigin: posAbove ? 'bottom center' : 'top center' }}
         onMouseEnter={cancelHide}
         onMouseLeave={scheduleHide}
       >
-        {/* Arrow */}
-        <div className="absolute left-1/2 z-10 -translate-x-1/2" style={posAbove ? {
-          top: '100%', width: 0, height: 0,
-          borderLeft: '8px solid transparent',
-          borderRight: '8px solid transparent',
-          borderTop: '8px solid #0f172a',
-        } : {
-          bottom: '100%', width: 0, height: 0,
-          borderLeft: '8px solid transparent',
-          borderRight: '8px solid transparent',
-          borderBottom: '8px solid #0f172a',
-        }} />
-
-        {/* Panel */}
-        <div
-          className="w-56 rounded-lg border bg-[#0f172a] p-3 shadow-2xl"
-          style={{
-            borderColor: popoverBorder,
-            boxShadow: `0 16px 48px rgba(0,0,0,0.65), 0 0 0 1px ${popoverShadow}`,
-          }}
-        >
-          {/* Header: section number + status pill */}
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="text-lg font-bold text-slate-100">{section.section_number}</span>
-            <span className={`rounded-full border px-2.5 py-0.5 text-[0.65rem] font-bold uppercase ${pillColors}`}>
+        <div className="w-64 rounded-xl border border-slate-700/90 bg-slate-900/95 p-3.5 shadow-2xl backdrop-blur-xl shadow-black/90">
+          <div className="mb-2 flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
+            <div>
+              <span className="text-base font-black text-white tracking-tight">Section {section.section_number}</span>
+              <p className="m-0 text-[0.68rem] font-semibold text-slate-400">{section.tier}</p>
+            </div>
+            <span className={`rounded-full border px-2.5 py-0.5 text-[0.62rem] font-extrabold uppercase tracking-wider ${pillColors}`}>
               {section.level}
             </span>
           </div>
 
-          {/* Tier */}
-          <p className="m-0 text-xs font-medium text-slate-400">{section.tier}</p>
+          <div className="grid grid-cols-2 gap-2 my-3">
+            <div className="rounded-lg bg-slate-950/80 p-2 border border-slate-800/80">
+              <span className="block text-[0.6rem] font-bold uppercase tracking-wider text-slate-400">Devices</span>
+              <span className="text-base font-extrabold text-white">{section.device_count}</span>
+            </div>
+            <div className="rounded-lg bg-slate-950/80 p-2 border border-slate-800/80">
+              <span className="block text-[0.6rem] font-bold uppercase tracking-wider text-slate-400">Occupancy</span>
+              <span className="text-base font-extrabold text-white">{densityPercent}%</span>
+            </div>
+          </div>
 
-          {/* Device count */}
-          <p className="m-0 mt-1 text-xs text-slate-400">
-            {section.device_count} device{section.device_count === 1 ? '' : 's'} detected
-          </p>
+          <div className="mb-3 flex items-center justify-between text-[0.68rem] text-slate-400">
+            <span>Last Telemetry</span>
+            <span className="font-semibold text-slate-300">{relativeTime(section.updated_at)}</span>
+          </div>
 
-          {/* Last updated */}
-          <p className="m-0 mt-0.5 text-xs text-slate-500">Updated {relativeTime(section.updated_at)}</p>
-
-          {/* Divider */}
-          <div className="my-2.5 border-t border-white/[0.08]" />
-
-          {/* View in 3D button */}
           <Link
             href={`/ops/3d?section=${section.section_number}`}
-            className="flex items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-indigo-400 transition hover:border-indigo-400/30 hover:bg-indigo-500/[0.12] hover:text-indigo-300"
+            className="flex items-center justify-center gap-2 rounded-lg border border-indigo-500/40 bg-indigo-600/25 px-3 py-1.5 text-xs font-bold text-indigo-300 transition-all hover:bg-indigo-600/40 hover:text-white hover:border-indigo-400 shadow-md shadow-indigo-950/40"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
               <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
               <line x1="12" y1="22.08" x2="12" y2="12" />
             </svg>
-            View in 3D
+            Inspect Section in 3D
           </Link>
         </div>
       </div>
@@ -268,69 +257,107 @@ function SectionCard({ section }: { section: CongestionRow }) {
   );
 }
 
+// ─── Section Grid Container ───────────────────────────────────────────────────
+
 function SectionGrid({
   sections,
   dataLoading,
+  tierFilter,
+  searchQuery,
 }: {
   sections: CongestionRow[];
   dataLoading: boolean;
+  tierFilter: 'all' | 'lower' | 'upper' | 'high';
+  searchQuery: string;
 }) {
+  const filteredSections = useMemo(() => {
+    let result = sections;
+
+    if (tierFilter === 'lower') {
+      result = result.filter((s) => s.tier.toLowerCase().includes('lower'));
+    } else if (tierFilter === 'upper') {
+      result = result.filter((s) => !s.tier.toLowerCase().includes('lower'));
+    } else if (tierFilter === 'high') {
+      result = result.filter((s) => s.level === 'high');
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter((s) => s.section_number.toLowerCase().includes(q) || s.tier.toLowerCase().includes(q));
+    }
+
+    return result;
+  }, [sections, tierFilter, searchQuery]);
+
   const lowerTier = useMemo(
-    () => sections.filter((s) => s.tier.toLowerCase().includes('lower')),
-    [sections],
+    () => filteredSections.filter((s) => s.tier.toLowerCase().includes('lower')),
+    [filteredSections],
   );
 
   const upperTier = useMemo(
-    () => sections.filter((s) => !s.tier.toLowerCase().includes('lower')),
-    [sections],
+    () => filteredSections.filter((s) => !s.tier.toLowerCase().includes('lower')),
+    [filteredSections],
   );
 
   if (dataLoading) {
     return (
-      <div className="grid min-h-[360px] place-items-center rounded-md border border-dashed border-white/10 text-sm text-slate-500">
-        Loading live congestion data...
+      <div className="grid min-h-[360px] place-items-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/20 text-sm text-slate-500">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+          <span className="font-medium">Connecting to live stadium telemetry...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (filteredSections.length === 0) {
+    return (
+      <div className="grid min-h-[280px] place-items-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/20 p-8 text-center text-slate-400">
+        <div>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2 text-slate-600">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <p className="m-0 text-sm font-semibold text-slate-300">No sections match your filter criteria</p>
+          <p className="m-0 mt-1 text-xs text-slate-500">Try adjusting your search query or selecting a different tier filter.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
-        <span className="mr-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-slate-500">Legend</span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          Low
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" />
-          Medium
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
-          High
-        </span>
-      </div>
-
-      {/* Lower Tier */}
-      <div>
-        <h3 className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em] text-slate-500">
-          Lower Tier
-        </h3>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
-          {lowerTier.map((s) => (
-            <SectionCard key={s.section_id} section={s} />
-          ))}
+      {lowerTier.length > 0 && (
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+              <span className="h-2 w-2 rounded-full bg-indigo-400" />
+              Lower Tier
+              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[0.65rem] font-bold text-slate-400 border border-slate-700">
+                {lowerTier.length} sections
+              </span>
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+            {lowerTier.map((s) => (
+              <SectionCard key={s.section_id} section={s} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Upper Tier */}
       {upperTier.length > 0 && (
         <div>
-          <h3 className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em] text-slate-500">
-            Upper Tier
-          </h3>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+              <span className="h-2 w-2 rounded-full bg-purple-400" />
+              Upper Tier
+              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[0.65rem] font-bold text-slate-400 border border-slate-700">
+                {upperTier.length} sections
+              </span>
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
             {upperTier.map((s) => (
               <SectionCard key={s.section_id} section={s} />
             ))}
@@ -340,6 +367,8 @@ function SectionGrid({
     </div>
   );
 }
+
+// ─── Main Dashboard Page ──────────────────────────────────────────────────────
 
 export default function OpsDashboardPage() {
   const router = useRouter();
@@ -354,6 +383,9 @@ export default function OpsDashboardPage() {
   const [activeAction, setActiveAction] = useState<'spike' | 'reset' | null>(null);
   const [flashingAlertIds, setFlashingAlertIds] = useState<string[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+
+  const [tierFilter, setTierFilter] = useState<'all' | 'lower' | 'upper' | 'high'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   function toggleExpand(key: string) {
     setExpandedGroups((prev) =>
@@ -587,29 +619,32 @@ export default function OpsDashboardPage() {
 
   if (authLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0a0a0f] text-slate-400" suppressHydrationWarning>
-        Loading ops dashboard...
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-400 font-sans" suppressHydrationWarning>
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+          <span className="text-sm font-medium">Loading ops control center...</span>
+        </div>
       </main>
     );
   }
 
   return (
     <main
-      className="min-h-screen bg-[#0a0a0f] px-4 py-5 font-sans text-slate-100 sm:px-6 lg:px-8"
+      className="min-h-screen bg-slate-950 font-sans text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200"
       suppressHydrationWarning
     >
       <style>{`
         @keyframes opsCardHighPulse {
-          0%, 100% { box-shadow: 0 0 12px rgba(248, 113, 113, 0.15), 0 0 0 1px rgba(239, 68, 68, 0.3); }
-          50%      { box-shadow: 0 0 24px rgba(248, 113, 113, 0.35), 0 0 0 1px rgba(239, 68, 68, 0.7); }
+          0%, 100% { box-shadow: 0 0 16px rgba(244, 63, 94, 0.25), 0 0 0 1px rgba(244, 63, 94, 0.4); }
+          50%      { box-shadow: 0 0 28px rgba(244, 63, 94, 0.5), 0 0 0 1px rgba(244, 63, 94, 0.8); }
         }
         .ops-card-high {
-          animation: opsCardHighPulse 1.8s ease-in-out infinite;
+          animation: opsCardHighPulse 2s ease-in-out infinite;
         }
 
         @keyframes opsAlertFlash {
-          0% { background: rgba(251, 191, 36, 0.2); border-color: rgba(251, 191, 36, 0.58); }
-          100% { background: rgba(255, 255, 255, 0.035); border-color: rgba(255, 255, 255, 0.08); }
+          0% { background: rgba(251, 191, 36, 0.25); border-color: rgba(251, 191, 36, 0.6); }
+          100% { background: rgba(15, 23, 42, 0.7); border-color: rgba(51, 65, 85, 0.6); }
         }
 
         .ops-alert-flash {
@@ -618,224 +653,341 @@ export default function OpsDashboardPage() {
 
         .ops-scrollbar {
           scrollbar-width: thin;
-          scrollbar-color: rgba(148, 163, 184, 0.35) rgba(15, 23, 42, 0.5);
+          scrollbar-color: rgba(148, 163, 184, 0.2) rgba(15, 23, 42, 0.8);
         }
       `}</style>
 
-      <div className="mx-auto flex max-w-7xl flex-col gap-5">
-        <header className="flex flex-col gap-4 border-b border-white/[0.08] pb-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
+      <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-xl px-4 py-3.5 sm:px-6 lg:px-8 shadow-lg shadow-black/40">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3.5 min-w-0">
             <StadiumLogo />
             <div className="min-w-0">
-              <h1 className="m-0 text-xl font-bold text-slate-100">StadiumSetu Ops</h1>
-              <p className="m-0 mt-1 text-sm text-slate-500">Live section congestion and alert monitoring</p>
+              <div className="flex items-center gap-2.5">
+                <h1 className="m-0 text-lg font-black text-white tracking-tight">StadiumSetu Ops</h1>
+                <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[0.62rem] font-extrabold text-emerald-400">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                  </span>
+                  LIVE TELEMETRY
+                </span>
+              </div>
+              <p className="m-0 text-xs text-slate-400">Executive congestion & incident response center</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          <div className="flex flex-wrap items-center gap-2.5 text-xs">
+            <span className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-1.5 text-slate-400 font-medium">
+              Updated <span className="text-slate-200 font-semibold">{latestUpdate}</span>
+            </span>
             <Link
               href="/"
-              className="rounded-md border border-white/10 bg-transparent px-3 py-2 font-medium text-slate-400 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-slate-200"
+              className="rounded-lg border border-slate-800 bg-slate-900/80 px-3.5 py-1.5 font-semibold text-slate-300 transition hover:border-slate-700 hover:bg-slate-800 hover:text-white"
             >
               &larr; Back to Home
             </Link>
-            <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2">Latest update: {latestUpdate}</span>
             <button
               type="button"
               onClick={handleSignOut}
-              className="rounded-md border border-white/10 bg-transparent px-3 py-2 font-medium text-slate-400 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-slate-200"
+              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3.5 py-1.5 font-semibold text-rose-300 transition hover:border-rose-500/50 hover:bg-rose-500/20 hover:text-rose-200"
             >
               Sign Out
             </button>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
-          <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4 backdrop-blur-sm" style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.06)' }}>
-            <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+        <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur-sm shadow-2xl shadow-black/50">
+            <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800/80 pb-5">
               <div>
-                <h2 className="m-0 text-base font-semibold text-slate-100">Section Heatmap</h2>
-                <p className="m-0 mt-1 text-sm text-slate-500">Device counts by seating tier</p>
+                <h2 className="m-0 text-lg font-extrabold text-white tracking-tight">Section Heatmap</h2>
+                <p className="m-0 mt-0.5 text-xs text-slate-400">Live device density & capacity utilization across seating tiers</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div className="rounded-md border border-emerald-400/25 bg-emerald-500/10 px-3 py-2 text-emerald-100">
-                  <span className="block text-lg font-bold">{statusCounts.low}</span>
-                  Low
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/15 to-emerald-950/20 px-3.5 py-2 text-center min-w-[76px]">
+                  <span className="block text-xl font-black text-emerald-400 leading-none">{statusCounts.low}</span>
+                  <span className="text-[0.62rem] font-bold uppercase tracking-wider text-emerald-300/80">Low</span>
                 </div>
-                <div className="rounded-md border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-amber-100">
-                  <span className="block text-lg font-bold">{statusCounts.medium}</span>
-                  Medium
+                <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-amber-500/15 to-amber-950/20 px-3.5 py-2 text-center min-w-[76px]">
+                  <span className="block text-xl font-black text-amber-400 leading-none">{statusCounts.medium}</span>
+                  <span className="text-[0.62rem] font-bold uppercase tracking-wider text-amber-300/80">Medium</span>
                 </div>
-                <div className="rounded-md border border-red-400/[0.35] bg-red-500/10 px-3 py-2 text-red-100">
-                  <span className="block text-lg font-bold">{statusCounts.high}</span>
-                  High
+                <div className="rounded-xl border border-rose-500/30 bg-gradient-to-b from-rose-500/15 to-rose-950/20 px-3.5 py-2 text-center min-w-[76px]">
+                  <span className="block text-xl font-black text-rose-400 leading-none">{statusCounts.high}</span>
+                  <span className="text-[0.62rem] font-bold uppercase tracking-wider text-rose-300/80">High</span>
                 </div>
               </div>
             </div>
 
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-1.5 rounded-xl bg-slate-950/80 p-1 border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setTierFilter('all')}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${tierFilter === 'all'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950'
+                    : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                  All Tiers
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTierFilter('lower')}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${tierFilter === 'lower'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950'
+                    : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                  Lower Tier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTierFilter('upper')}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${tierFilter === 'upper'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950'
+                    : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                  Upper Tier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTierFilter('high')}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${tierFilter === 'high'
+                    ? 'bg-rose-600 text-white shadow-md shadow-rose-950'
+                    : 'text-rose-400 hover:text-rose-300'
+                    }`}
+                >
+                  High Risk ({statusCounts.high})
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter section (e.g. L01)..."
+                  className="w-full sm:w-56 rounded-xl border border-slate-800 bg-slate-950/80 px-3.5 py-1.5 pl-9 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
+            </div>
+
             {error && (
-              <div className="mb-4 rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              <div className="mb-5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-rose-400">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
                 {error}
               </div>
             )}
 
-            <SectionGrid sections={sections} dataLoading={dataLoading} />
+            <SectionGrid
+              sections={sections}
+              dataLoading={dataLoading}
+              tierFilter={tierFilter}
+              searchQuery={searchQuery}
+            />
           </div>
 
-          <aside className="flex flex-col gap-4">
-            <section className="rounded-lg border border-cyan-300/20 bg-cyan-400/[0.055] p-4 shadow-xl shadow-black/25">
-              <div className="mb-3">
-                <p className="m-0 text-xs font-bold uppercase tracking-[0.1em] text-cyan-200">Demo Controls</p>
-                <p className="m-0 mt-1 text-sm text-slate-400">Operator-only test tools for the live demo.</p>
+          <aside className="flex flex-col gap-6">
+            <section className="rounded-2xl border border-indigo-500/30 bg-gradient-to-b from-indigo-950/40 via-slate-900/60 to-slate-950/80 p-4 shadow-2xl shadow-black/50">
+              <div className="mb-3.5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <h3 className="m-0 text-xs font-extrabold uppercase tracking-wider text-cyan-300">Demo Controls</h3>
+                </div>
+                <p className="m-0 mt-0.5 text-xs text-slate-400">Operator test tool for live crowd simulation</p>
               </div>
 
-              <div className="grid gap-2">
+              <div className="grid gap-2.5">
                 <button
                   type="button"
                   onClick={() => runDemoAction('spike')}
                   disabled={activeAction !== null}
-                  className="rounded-md border border-red-300/[0.35] bg-red-500/[0.15] px-4 py-3 text-sm font-bold text-red-100 transition hover:border-red-300/[0.55] hover:bg-red-500/[0.24] disabled:cursor-not-allowed disabled:opacity-55"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-gradient-to-r from-rose-600/30 to-rose-700/20 px-4 py-2.5 text-xs font-extrabold text-rose-200 transition-all hover:border-rose-400 hover:bg-rose-600/40 hover:text-white hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 shadow-lg shadow-rose-950/60"
                 >
-                  {activeAction === 'spike' ? 'Simulating...' : 'Simulate Crowd Spike'}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                  {activeAction === 'spike' ? 'Simulating Spike...' : 'Simulate Crowd Spike'}
                 </button>
+
                 <button
                   type="button"
                   onClick={() => runDemoAction('reset')}
                   disabled={activeAction !== null}
-                  className="rounded-md border border-emerald-300/[0.35] bg-emerald-500/[0.12] px-4 py-3 text-sm font-bold text-emerald-100 transition hover:border-emerald-300/[0.55] hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-55"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-600/10 px-4 py-2.5 text-xs font-extrabold text-emerald-300 transition-all hover:border-emerald-400 hover:bg-emerald-600/20 hover:text-emerald-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
                 >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 4 23 10 17 10" />
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                  </svg>
                   {activeAction === 'reset' ? 'Resetting...' : 'Reset to Normal'}
                 </button>
               </div>
             </section>
 
-            <section className="flex max-h-[600px] flex-col rounded-lg border border-white/[0.08] bg-white/[0.025] shadow-xl shadow-black/25">
-              <div className="border-b border-white/[0.08] p-4">
-                <h2 className="m-0 text-base font-semibold text-slate-100">Recent Alerts</h2>
-                <p className="m-0 mt-1 text-sm text-slate-500">Newest incidents appear first</p>
+            <section className="flex max-h-[640px] flex-col rounded-2xl border border-slate-800 bg-slate-900/40 shadow-2xl shadow-black/50 backdrop-blur-sm overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-800 p-4">
+                <div>
+                  <h2 className="m-0 text-base font-extrabold text-white tracking-tight">Recent Incidents</h2>
+                  <p className="m-0 mt-0.5 text-xs text-slate-400">Live safety & congestion stream</p>
+                </div>
+                <span className="rounded-full bg-slate-800 px-2.5 py-1 text-[0.65rem] font-bold text-slate-300 border border-slate-700">
+                  {alertGroups.length} Active
+                </span>
               </div>
 
-              <div className="ops-scrollbar flex-1 overflow-y-auto p-4">
+              <div className="ops-scrollbar flex-1 overflow-y-auto p-4 space-y-3">
                 {dataLoading ? (
-                  <p className="m-0 text-sm text-slate-500">Loading alerts...</p>
+                  <div className="grid place-items-center py-12 text-xs text-slate-500">
+                    Loading live incidents...
+                  </div>
                 ) : alertGroups.length ? (
-                  <div className="space-y-1">
-                    {alertGroups.map((group) => {
-                      const totalCount = 1 + group.rest.length;
-                      const isDupOpen = expandedGroups.includes(group.key);
-                      const severityColor = group.top.severity === 'high' ? '#ef4444' : group.top.severity === 'medium' ? '#f59e0b' : '#22c55e';
-                      const dotClass = group.top.severity === 'high' ? 'bg-red-500' : group.top.severity === 'medium' ? 'bg-amber-500' : 'bg-emerald-500';
-                      return (
-                        <div key={group.key}>
-                          <div
-                            className={`rounded-lg border-2 bg-white/[0.035] p-3 ${flashingAlertIds.includes(group.top.id) ? 'ops-alert-flash' : ''}`}
-                            style={{ borderColor: severityColor }}
-                          >
-                            {/* ── Header: dot + title + dismiss ── */}
-                            <div className="mb-3 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${dotClass}`} />
-                                {group.sectionNumber ? (
-                                  <span className="text-sm font-bold text-slate-100">Section {group.sectionNumber}</span>
-                                ) : (
-                                  <span className="text-xs text-slate-400 italic">Unknown section</span>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleResolveGroup(group.key)}
-                                className="flex items-center justify-center rounded p-0.5 text-slate-500 transition hover:text-slate-300"
-                                aria-label="Dismiss"
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <line x1="18" y1="6" x2="6" y2="18" />
-                                  <line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
-                              </button>
-                            </div>
+                  alertGroups.map((group) => {
+                    const totalCount = 1 + group.rest.length;
+                    const isDupOpen = expandedGroups.includes(group.key);
+                    const isHighSeverity = group.top.severity === 'high';
+                    const isMediumSeverity = group.top.severity === 'medium';
 
-                            {/* ── Label-value rows ── */}
-                            <div className="space-y-1.5 text-sm">
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-500">Tier</span>
-                                <span className="font-semibold text-slate-100">{group.tier || '—'}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-500">Devices</span>
-                                <span className="font-semibold text-slate-100">{group.deviceCount}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-500">Status</span>
-                                <span className="font-bold uppercase" style={{ color: severityColor }}>
-                                  {group.top.severity}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-500">Updated</span>
-                                <span className="font-semibold text-slate-100">{relativeTime(group.top.created_at)}</span>
-                              </div>
-                            </div>
+                    const stripeColor = isHighSeverity ? 'bg-rose-500' : isMediumSeverity ? 'bg-amber-400' : 'bg-emerald-400';
+                    const badgeStyle = isHighSeverity
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                      : isMediumSeverity
+                        ? 'bg-amber-400/20 text-amber-300 border-amber-400/40'
+                        : 'bg-emerald-400/20 text-emerald-300 border-emerald-400/40';
 
-                            {/* ── Divider + actions ── */}
-                            <div className="mt-3 flex items-center justify-between border-t border-white/[0.08] pt-2.5">
+                    return (
+                      <div
+                        key={group.key}
+                        className={`relative overflow-hidden rounded-xl border border-slate-800 bg-slate-950/80 p-3.5 transition-all duration-200 hover:border-slate-700 ${flashingAlertIds.includes(group.top.id) ? 'ops-alert-flash' : ''}`}
+                      >
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${stripeColor}`} />
+
+                        <div className="mb-2.5 flex items-start justify-between gap-2 pl-1.5">
+                          <div>
+                            <div className="flex items-center gap-2">
                               {group.sectionNumber ? (
-                                <Link
-                                  href={`/ops/3d?section=${group.sectionNumber}`}
-                                  className="text-xs font-semibold text-indigo-400 transition hover:text-indigo-300"
-                                >
-                                  View in 3D &rarr;
-                                </Link>
-                              ) : <span />}
-                              <div className="flex items-center gap-2">
-                                {totalCount > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleExpand(group.key)}
-                                    className="flex items-center gap-0.5 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[0.55rem] font-semibold text-slate-400 transition hover:border-white/20 hover:text-slate-200"
-                                  >
-                                    &times;{totalCount}
-                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                                      className={`transition-transform ${isDupOpen ? 'rotate-180' : ''}`}
-                                    >
-                                      <polyline points="6 9 12 15 18 9" />
-                                    </svg>
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => handleResolveGroup(group.key)}
-                                  className="flex items-center gap-1 text-xs font-semibold text-emerald-400 transition hover:text-emerald-300"
-                                >
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="20 6 9 17 4 12" />
-                                  </svg>
-                                  Resolve
-                                </button>
-                              </div>
+                                <span className="text-sm font-extrabold text-white tracking-tight">Section {group.sectionNumber}</span>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">Unknown section</span>
+                              )}
+                              <span className={`rounded-full border px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wider ${badgeStyle}`}>
+                                {group.top.severity}
+                              </span>
                             </div>
+                            <p className="m-0 mt-0.5 text-[0.68rem] text-slate-400 font-medium">
+                              {relativeTime(group.top.created_at)}
+                            </p>
+                          </div>
 
-                            {/* ── Older duplicate alerts ── */}
-                            {isDupOpen && group.rest.length > 0 && (
-                              <div className="mt-2 space-y-1 border-t border-white/[0.06] pt-2">
-                                {group.rest.map((alert) => (
-                                  <div key={alert.id} className="pl-4">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <time className="text-[0.55rem] text-slate-500">{relativeTime(alert.created_at)}</time>
-                                    </div>
-                                    <p className="m-0 mt-0.5 text-[0.65rem] leading-4 text-slate-400">{alert.message}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                          <button
+                            type="button"
+                            onClick={() => handleResolveGroup(group.key)}
+                            className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+                            aria-label="Dismiss alert group"
+                            title="Resolve incident"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 my-2.5 pl-1.5 text-xs">
+                          <div className="rounded-lg bg-slate-900/90 p-2 border border-slate-800">
+                            <span className="block text-[0.58rem] font-bold uppercase tracking-wider text-slate-400">Seating Tier</span>
+                            <span className="font-extrabold text-white text-[0.75rem]">{group.tier || '—'}</span>
+                          </div>
+                          <div className="rounded-lg bg-slate-900/90 p-2 border border-slate-800">
+                            <span className="block text-[0.58rem] font-bold uppercase tracking-wider text-slate-400">Active Devices</span>
+                            <span className="font-extrabold text-white text-[0.75rem]">{group.deviceCount}</span>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <div className="mt-3 flex items-center justify-between border-t border-slate-800/80 pt-2.5 pl-1.5">
+                          {group.sectionNumber ? (
+                            <Link
+                              href={`/ops/3d?section=${group.sectionNumber}`}
+                              className="inline-flex items-center gap-1 text-xs font-bold text-indigo-400 transition hover:text-indigo-300 hover:translate-x-0.5"
+                            >
+                              Inspect in 3D &rarr;
+                            </Link>
+                          ) : <span />}
+
+                          <div className="flex items-center gap-2">
+                            {totalCount > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => toggleExpand(group.key)}
+                                className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-[0.65rem] font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition"
+                              >
+                                {totalCount} events
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+                                  className={`transition-transform duration-200 ${isDupOpen ? 'rotate-180' : ''}`}
+                                >
+                                  <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleResolveGroup(group.key)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300 transition hover:border-emerald-500/60 hover:bg-emerald-500/20 hover:text-emerald-200"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              Resolve
+                            </button>
+                          </div>
+                        </div>
+
+                        {isDupOpen && group.rest.length > 0 && (
+                          <div className="mt-3 space-y-1.5 border-t border-slate-800 pt-2.5 pl-1.5">
+                            {group.rest.map((alert) => (
+                              <div key={alert.id} className="rounded-lg bg-slate-900/60 p-2 border border-slate-800/60">
+                                <div className="flex items-center justify-between text-[0.65rem]">
+                                  <span className="text-slate-400 font-semibold">{relativeTime(alert.created_at)}</span>
+                                  <span className="uppercase text-[0.58rem] font-extrabold text-slate-400">{alert.severity}</span>
+                                </div>
+                                <p className="m-0 mt-1 text-[0.7rem] text-slate-300 leading-snug">{alert.message}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 ) : (
-                  <div className="grid min-h-[260px] place-items-center rounded-md border border-dashed border-white/10 text-center text-sm text-slate-500">
-                    No alerts yet.
+                  <div className="grid place-items-center py-12 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-2 text-slate-600">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                    <span className="font-medium">All clear — No active congestion incidents</span>
                   </div>
                 )}
               </div>
