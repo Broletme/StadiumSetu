@@ -79,7 +79,7 @@ function wedgePath(index: number, innerScale: number, outerScale: number): strin
   return parts.join('');
 }
 
-export default function Minimap({ sections }: MinimapProps) {
+export default function Minimap({ sections, gates }: MinimapProps) {
   const sectionMap = useMemo(() => {
     const m = new Map<string, CongestionLevel>();
     sections.forEach((s) => {
