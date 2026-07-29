@@ -311,14 +311,16 @@ export default function FanPage() {
         .fan-dot:nth-child(2) { animation-delay: 0.2s; }
         .fan-dot:nth-child(3) { animation-delay: 0.4s; }
 
-        /* Thin custom scrollbar */
-        .fan-scroll::-webkit-scrollbar { width: 4px; }
-        .fan-scroll::-webkit-scrollbar-track { background: transparent; }
-        .fan-scroll::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 2px; }
-
-        .sidebar-scroll::-webkit-scrollbar { width: 3px; }
-        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
-        .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.25); border-radius: 2px; }
+        /* Hide scrollbars completely while preserving scroll */
+        .fan-scroll, .sidebar-scroll {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .fan-scroll::-webkit-scrollbar, .sidebar-scroll::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+        }
 
         /* Send button */
         .fan-send-btn:hover:not(:disabled) {

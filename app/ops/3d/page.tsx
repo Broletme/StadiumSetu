@@ -136,7 +136,7 @@ function PriorityPanel({
       </div>
       <div 
         className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto px-2 pb-2"
-        style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(148, 163, 184, 0.35) rgba(15, 23, 42, 0.5)' }}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {prioritySections.map((s) => {
           const isActive = focusedSectionNumber === s.section_number;

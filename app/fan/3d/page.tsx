@@ -16,9 +16,12 @@ const StadiumScene = dynamic(() => import('./StadiumScene'), {
   ssr: false,
   loading: () => (
     <div style={styles.canvasPlaceholder}>
-      <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>
-        Loading 3D scene…
-      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={styles.spinner} />
+        <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: 0, fontWeight: 500 }}>
+          Initializing 3D Stadium Environment...
+        </p>
+      </div>
     </div>
   ),
 });
@@ -42,6 +45,17 @@ type Zone = {
   gate: Gate;
 };
 
+const POPULAR_SECTIONS = ['L01', 'L05', 'U02', 'U11'];
+
+const SHORT_AMENITY_LABELS: Record<AmenityType, string> = {
+  restroom: 'Restrooms',
+  food: 'Food & Drinks',
+  merchandise: 'Merch Kiosks',
+  firstaid: 'First Aid',
+  elevator: 'Elevators',
+  exit: 'Evacuation Exits',
+};
+
 // ─── Page component ───────────────────────────────────────────────────────────
 
 function Fan3DContent() {
@@ -51,9 +65,9 @@ function Fan3DContent() {
   const [searchResult, setSearchResult] = useState<Zone | null>(null);
   const [showGuide, setShowGuide] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [cameraMode, setCameraMode] = useState<'default' | 'top' | 'pitch'>('default');
 
   // Tracks known gates so we can render all gate markers even before a search
-  // (starts empty; populated after first successful query)
   const [knownGates, setKnownGates] = useState<Gate[]>([]);
 
   // ── Amenity type visibility toggles ──────────────────────────────────────
@@ -145,13 +159,14 @@ function Fan3DContent() {
 
   return (
     <div style={styles.root}>
-      {/* ── Left panel (form + info card) ─────────────────────────────────── */}
-      <div style={styles.panel}>
+      {/* ── Left Sidebar Panel ────────────────────────────────────────────── */}
+      <div style={styles.panel} className="ops-scrollbar">
+        {/* Top Nav Pill Bar */}
         <div style={styles.topNav}>
           <Link href="/dashboard" style={styles.backButton}>
-            ← Dashboard
+            &larr; Dashboard
           </Link>
-          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
             <Link href="/fan/map" style={styles.map2dButton}>
               🗺 Map
             </Link>
@@ -167,17 +182,17 @@ function Fan3DContent() {
             </Link>
           </div>
         </div>
-        
-        {/* Header */}
+
+        {/* Brand Header */}
         <div style={styles.header}>
           <div style={styles.logo}>
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#dg1)" />
-              <path d="M16 8l-8 4.5v7L16 24l8-4.5v-7L16 8z" fill="rgba(255,255,255,0.15)" />
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#fanLogoGrad)" />
+              <path d="M16 8l-8 4.5v7L16 24l8-4.5v-7L16 8z" fill="rgba(255,255,255,0.2)" />
               <defs>
-                <linearGradient id="dg1" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+                <linearGradient id="fanLogoGrad" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
                   <stop stopColor="#6366f1" />
-                  <stop offset="1" stopColor="#8b5cf6" />
+                  <stop offset="1" stopColor="#a855f7" />
                 </linearGradient>
               </defs>
             </svg>
@@ -190,15 +205,51 @@ function Fan3DContent() {
 
         {/* Search form */}
         <form onSubmit={handleSearch} style={styles.form}>
-          <input
-            type="text"
-            value={sectionQuery}
-            onChange={(e) => setSectionQuery(e.target.value)}
-            placeholder="Enter section number, e.g. L01"
-            style={styles.input}
-          />
+          <div style={styles.inputWrapper}>
+            <input
+              type="text"
+              value={sectionQuery}
+              onChange={(e) => setSectionQuery(e.target.value)}
+              placeholder="Enter section number, e.g. L01"
+              style={styles.input}
+            />
+            {sectionQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSectionQuery('');
+                  setSearchResult(null);
+                }}
+                style={styles.clearInputBtn}
+              >
+                &times;
+              </button>
+            )}
+          </div>
+
+          {/* Quick presets */}
+          <div style={styles.presetContainer}>
+            <span style={styles.presetLabel}>Quick try:</span>
+            {POPULAR_SECTIONS.map((sec) => (
+              <button
+                key={sec}
+                type="button"
+                onClick={() => {
+                  setSectionQuery(sec);
+                  executeSearch(sec);
+                }}
+                style={{
+                  ...styles.presetChip,
+                  ...(sectionQuery === sec ? styles.presetChipActive : {}),
+                }}
+              >
+                {sec}
+              </button>
+            ))}
+          </div>
+
           <button type="submit" disabled={searchLoading} style={styles.submitButton}>
-            {searchLoading ? 'Searching…' : 'Find My Seat'}
+            {searchLoading ? 'Searching Section…' : 'Find My Seat 🚀'}
           </button>
         </form>
 
@@ -206,7 +257,7 @@ function Fan3DContent() {
         {searchError && (
           <div style={styles.errorContainer}>
             <p style={styles.errorText}>
-              We couldn't find that section — check the number and try again
+              We couldn't find section &quot;{sectionQuery}&quot; — check the section code (e.g. L01, U05) and try again.
             </p>
           </div>
         )}
@@ -214,24 +265,24 @@ function Fan3DContent() {
         {/* Result info card */}
         {searchResult && (
           <div style={styles.resultCard}>
-            <div style={styles.resultBadge}>
-              <span style={styles.resultBadgeText}>✓ Section found</span>
+            <div style={styles.resultHeader}>
+              <span style={styles.resultBadgeText}>✓ Section Found</span>
+              <span style={styles.resultSectionNumber}>{searchResult.section_number}</span>
             </div>
-            <h2 style={styles.resultTitle}>Section {searchResult.section_number}</h2>
             <div style={styles.resultDetails}>
               <div style={styles.detailItem}>
-                <span style={styles.detailLabel}>Tier</span>
+                <span style={styles.detailLabel}>Seating Tier</span>
                 <span style={styles.detailValue}>{searchResult.tier}</span>
               </div>
               <div style={styles.detailItem}>
                 <span style={styles.detailLabel}>Nearest Gate</span>
-                <span style={styles.detailValue}>
-                  {searchResult.gate?.name || 'Unknown'}
+                <span style={styles.detailValueHighlight}>
+                  {searchResult.gate?.name || 'Gate A'}
                 </span>
               </div>
             </div>
             <p style={styles.hint}>
-              🟢 Your section is highlighted in green. The animated path leads you to the gate.
+              🟢 Section <b>{searchResult.section_number}</b> is highlighted in green. Animated path guides you to <b>{searchResult.gate?.name || 'Gate A'}</b> (~2 min walk).
             </p>
           </div>
         )}
@@ -239,7 +290,10 @@ function Fan3DContent() {
         {/* ── Stadium Amenities Toggles ──────────────────────────────────── */}
         <div style={styles.amenitySection}>
           <div style={styles.amenityHeader}>
-            <h3 style={styles.amenityTitle}>Stadium Amenities</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.9rem' }}>📍</span>
+              <h3 style={styles.amenityTitle}>Stadium Amenities</h3>
+            </div>
             <button
               onClick={() => {
                 setActiveAmenities((prev) =>
@@ -263,96 +317,162 @@ function Fan3DContent() {
               ] as AmenityType[]
             ).map((type) => {
               const isHighlighted = highlightedAmenityType === type;
+              const isChecked = activeAmenities.has(type);
+              const color = AMENITY_TYPE_COLORS[type];
+
               return (
-                <label
+                <div
                   key={type}
-                  style={{
-                    ...styles.amenityItem,
-                    background: isHighlighted
-                      ? 'rgba(255,255,255,0.06)'
-                      : 'transparent',
-                  }}
+                  onClick={() => toggleAmenity(type)}
                   onMouseEnter={() => setHighlightedAmenityType(type)}
                   onMouseLeave={() => setHighlightedAmenityType(null)}
+                  style={{
+                    ...styles.amenityCard,
+                    background: isChecked
+                      ? `linear-gradient(135deg, ${color}22 0%, rgba(15,23,42,0.85) 100%)`
+                      : isHighlighted
+                        ? 'rgba(255,255,255,0.06)'
+                        : 'rgba(255,255,255,0.03)',
+                    borderColor: isChecked
+                      ? `${color}66`
+                      : isHighlighted
+                        ? 'rgba(255,255,255,0.15)'
+                        : 'rgba(255,255,255,0.07)',
+                    boxShadow: isChecked
+                      ? `0 4px 12px ${color}25`
+                      : 'none',
+                  }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={activeAmenities.has(type)}
-                    onChange={() => toggleAmenity(type)}
-                    style={styles.amenityCheckbox}
-                  />
-                  <span
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, flex: 1 }}>
+                    <span
+                      style={{
+                        ...styles.amenityDot,
+                        background: color,
+                        boxShadow: isChecked ? `0 0 8px ${color}` : 'none',
+                      }}
+                    />
+                    <span style={{ fontSize: '0.9rem', lineHeight: 1, flexShrink: 0 }}>{AMENITY_ICONS[type]}</span>
+                    <span
+                      style={{
+                        ...styles.amenityLabel,
+                        color: isChecked ? '#ffffff' : '#94a3b8',
+                        fontWeight: isChecked ? 700 : 500,
+                      }}
+                    >
+                      {SHORT_AMENITY_LABELS[type]}
+                    </span>
+                  </div>
+
+                  {/* Custom Toggle Switch */}
+                  <div
                     style={{
-                      ...styles.amenityDot,
-                      background: AMENITY_TYPE_COLORS[type],
-                      boxShadow: activeAmenities.has(type) || isHighlighted
-                        ? `0 0 6px ${AMENITY_TYPE_COLORS[type]}66`
-                        : 'none',
-                    }}
-                  />
-                  <span
-                    style={{
-                      ...styles.amenityLabel,
-                      color: isHighlighted ? '#f1f5f9' : undefined,
+                      ...styles.switchTrack,
+                      background: isChecked ? color : 'rgba(255,255,255,0.12)',
                     }}
                   >
-                    {AMENITY_ICONS[type]}{' '}
-                    {AMENITY_TYPE_LABELS[type]}
-                  </span>
-                </label>
+                    <div
+                      style={{
+                        ...styles.switchThumb,
+                        transform: isChecked ? 'translateX(10px)' : 'translateX(2px)',
+                      }}
+                    />
+                  </div>
+                </div>
               );
             })}
           </div>
           {activeAmenities.size === 0 && (
             <p style={styles.amenityHint}>
-              Toggle amenities above to see their locations in the 3D stadium
+              Toggle amenities above to show interactive 3D wayfinding markers.
             </p>
           )}
         </div>
 
-        {/* Legend */}
-        <div style={styles.legend}>
-          <div style={styles.legendItem}>
-            <span style={{ ...styles.dot, background: '#4f46e5' }} />
-            <span>Lower Tier</span>
-          </div>
-          <div style={styles.legendItem}>
-            <span style={{ ...styles.dot, background: '#7c3aed' }} />
-            <span>Upper Tier</span>
-          </div>
-          <div style={styles.legendItem}>
-            <span style={{ ...styles.dot, background: '#4ade80' }} />
-            <span>Your section</span>
-          </div>
-          <div style={styles.legendItem}>
-            <span style={{ ...styles.dot, background: '#f59e0b' }} />
-            <span>Gate</span>
+        {/* ── Legend Section ────────────────────────────────────────────── */}
+        <div style={styles.legendContainer}>
+          <h4 style={styles.legendTitle}>Stadium Legend</h4>
+          <div style={styles.legendGrid}>
+            <div style={styles.legendItem}>
+              <span style={{ ...styles.dot, background: '#4f46e5' }} />
+              <span>Lower Tier</span>
+            </div>
+            <div style={styles.legendItem}>
+              <span style={{ ...styles.dot, background: '#7c3aed' }} />
+              <span>Upper Tier</span>
+            </div>
+            <div style={styles.legendItem}>
+              <span style={{ ...styles.dot, background: '#4ade80', boxShadow: '0 0 8px #4ade80' }} />
+              <span>Your Section</span>
+            </div>
+            <div style={styles.legendItem}>
+              <span style={{ ...styles.dot, background: '#f59e0b' }} />
+              <span>Entrance Gate</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── 3-D canvas area ───────────────────────────────────────────────── */}
+      {/* ── 3-D Canvas Area ───────────────────────────────────────────────── */}
       <div style={styles.canvasWrapper}>
-        {/* Stadium name overlay (HTML, not 3D) */}
+        {/* Stadium Title Overlay */}
         <div style={styles.stadiumName}>
-          <span style={styles.stadiumNameText}>StadiumSetu Arena</span>
+          <div style={styles.stadiumBadge}>
+            <span style={styles.stadiumLiveDot} />
+            <span style={styles.stadiumNameText}>STADIUMSETU ARENA</span>
+          </div>
+        </div>
+
+        {/* Camera View Mode Preset Bar Overlay */}
+        <div style={styles.cameraControlsBar}>
+          <button
+            type="button"
+            onClick={() => setCameraMode('default')}
+            style={{
+              ...styles.cameraBtn,
+              ...(cameraMode === 'default' ? styles.cameraBtnActive : {}),
+            }}
+          >
+            🏟️ Bowl View
+          </button>
+          <button
+            type="button"
+            onClick={() => setCameraMode('top')}
+            style={{
+              ...styles.cameraBtn,
+              ...(cameraMode === 'top' ? styles.cameraBtnActive : {}),
+            }}
+          >
+            🎥 Overhead
+          </button>
+          <button
+            type="button"
+            onClick={() => setCameraMode('pitch')}
+            style={{
+              ...styles.cameraBtn,
+              ...(cameraMode === 'pitch' ? styles.cameraBtnActive : {}),
+            }}
+          >
+            ⚽ Pitch View
+          </button>
         </div>
 
         <StadiumScene
           zone={searchResult}
           uniqueGates={uniqueGates}
           activeAmenities={activeAmenities}
+          cameraMode={cameraMode}
         />
 
-        {/* Drag hint */}
-        <p style={styles.dragHint}>Drag to rotate · Scroll to zoom</p>
+        {/* Drag & Controls Overlay Hint */}
+        <div style={styles.dragHintBox}>
+          <span>🖱️ Drag to rotate &bull; Scroll to zoom &bull; Right-click to pan</span>
+        </div>
       </div>
 
-      {/* ── Onboarding / Information Modal ───────────────────────────────── */}
+      {/* ── Onboarding / Guide Modal ───────────────────────────────── */}
       {showGuide && (
         <div style={styles.modalOverlay} onClick={() => closeGuide(false)}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            {/* Close button */}
             <button
               style={styles.modalCloseBtn}
               onClick={() => closeGuide(false)}
@@ -361,25 +481,23 @@ function Fan3DContent() {
               ✕
             </button>
 
-            {/* Modal Header */}
             <div style={styles.modalHeader}>
               <div style={styles.modalBadge}>
-                <span>🏟️ FIFA World Cup 2026</span>
+                <span>🏟️ Interactive 3D Stadium</span>
               </div>
               <h2 style={styles.modalTitle}>3D Stadium Seat Finder Guide</h2>
               <p style={styles.modalSubtitle}>
-                Interactively locate your seating section, view entrance gates, and navigate the stadium in 3D.
+                Locate your section, explore gate paths, and find nearby stadium amenities in real-time 3D.
               </p>
             </div>
 
-            {/* Feature Cards Grid */}
             <div style={styles.guideGrid}>
               <div style={styles.guideCard}>
                 <div style={styles.guideCardIcon}>🔍</div>
                 <div>
                   <h3 style={styles.guideCardTitle}>1. Search Your Section</h3>
                   <p style={styles.guideCardText}>
-                    Type your section number (e.g. <b>L01</b>, <b>U06</b>, <b>210</b>) in the search box on the left panel to locate it.
+                    Type your section number (e.g. <b>L01</b>, <b>U06</b>) or click quick section presets to locate it instantly.
                   </p>
                 </div>
               </div>
@@ -389,7 +507,7 @@ function Fan3DContent() {
                 <div>
                   <h3 style={styles.guideCardTitle}>2. View Your Gate & Path</h3>
                   <p style={styles.guideCardText}>
-                    Your section will highlight in green, with an animated guide line pointing directly to your nearest entrance gate.
+                    Your section highlights in green with an animated path directing you straight to your assigned entrance gate.
                   </p>
                 </div>
               </div>
@@ -397,10 +515,10 @@ function Fan3DContent() {
               <div style={styles.guideCard}>
                 <div style={styles.guideCardIcon}>🎮</div>
                 <div>
-                  <h3 style={styles.guideCardTitle}>3. Interactive 3D Controls</h3>
+                  <h3 style={styles.guideCardTitle}>3. 3D Stadium Navigation</h3>
                   <p style={styles.guideCardText}>
-                    <b>Rotate:</b> Left-click & drag anywhere on the 3D view.<br />
-                    <b>Zoom:</b> Scroll mouse wheel up or down.<br />
+                    <b>Rotate:</b> Left-click & drag anywhere.<br />
+                    <b>Zoom:</b> Scroll mouse wheel.<br />
                     <b>Pan:</b> Right-click & drag.
                   </p>
                 </div>
@@ -409,15 +527,14 @@ function Fan3DContent() {
               <div style={styles.guideCard}>
                 <div style={styles.guideCardIcon}>✨</div>
                 <div>
-                  <h3 style={styles.guideCardTitle}>4. Smart AI Integration</h3>
+                  <h3 style={styles.guideCardTitle}>4. Smart AI Assistant</h3>
                   <p style={styles.guideCardText}>
-                    Click <b>✨ Ask AI</b> anytime to chat naturally with your stadium assistant and get automatic 3D directions!
+                    Click <b>✨ Ask AI</b> anytime to chat with your stadium assistant for personalized directions!
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div style={styles.modalFooter}>
               <label style={styles.checkboxLabel}>
                 <input
@@ -449,7 +566,7 @@ export default function Fan3DPage() {
       fallback={
         <div style={styles.root}>
           <div style={styles.panel}>
-            <p style={{ color: '#64748b' }}>Loading 3D Finder...</p>
+            <p style={{ color: '#94a3b8' }}>Loading 3D Finder...</p>
           </div>
         </div>
       }
@@ -463,215 +580,317 @@ export default function Fan3DPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   root: {
-    minHeight: '100vh',
+    height: '100vh',
+    maxHeight: '100vh',
     display: 'flex',
     flexDirection: 'row',
     background: '#0a0a0f',
     backgroundImage:
-      'radial-gradient(ellipse 80% 60% at 20% -10%, rgba(99,102,241,0.18) 0%, transparent 65%)',
+      'radial-gradient(ellipse 80% 60% at 20% -10%, rgba(99,102,241,0.15) 0%, transparent 70%)',
     fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-    color: '#f1f5f9',
+    color: '#f8fafc',
+    overflow: 'hidden',
   },
 
-  // ── Left panel ─────────────────────────────────────────────────────────────
+  // ── Left Panel Sidebar ───────────────────────────────────────────────────────
   panel: {
-    width: '360px',
-    minWidth: '320px',
+    width: '380px',
+    minWidth: '340px',
     flexShrink: 0,
-    padding: '2rem 1.75rem',
-    borderRight: '1px solid rgba(255,255,255,0.06)',
+    padding: '1.25rem 1.25rem 2rem',
+    borderRight: '1px solid rgba(255,255,255,0.08)',
+    background: 'rgba(15, 23, 42, 0.5)',
+    backdropFilter: 'blur(16px)',
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
     overflowY: 'auto',
+    height: '100vh',
+    maxHeight: '100vh',
+    scrollbarWidth: 'none',
+    msOverflowStyle: 'none',
   },
   topNav: {
-    marginBottom: '1.5rem',
+    marginBottom: '1.25rem',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: '0.5rem',
   },
   backButton: {
-    display: 'inline-block',
+    display: 'inline-flex',
+    alignItems: 'center',
     color: '#94a3b8',
     textDecoration: 'none',
-    fontSize: '0.85rem',
-    fontWeight: 500,
-    padding: '0.4rem 0.8rem',
-    background: 'rgba(0,0,0,0.65)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '8px',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    padding: '0.4rem 0.75rem',
+    background: 'rgba(255,255,255,0.04)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: '10px',
+    transition: 'all 0.2s',
+  },
+  map2dButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    color: '#a5b4fc',
+    textDecoration: 'none',
+    background: 'rgba(99,102,241,0.12)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(99,102,241,0.3)',
+    borderRadius: '10px',
+    padding: '0.4rem 0.65rem',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    transition: 'all 0.2s',
+  },
+  guideTriggerButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    color: '#cbd5e1',
+    background: 'rgba(255,255,255,0.06)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: '10px',
+    padding: '0.4rem 0.65rem',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    cursor: 'pointer',
     transition: 'all 0.2s',
   },
   askAiButton: {
-    display: 'inline-block',
+    display: 'inline-flex',
+    alignItems: 'center',
     color: '#ffffff',
     textDecoration: 'none',
-    fontSize: '0.85rem',
-    fontWeight: 600,
-    padding: '0.4rem 0.8rem',
-    background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
-    border: '1px solid rgba(99,102,241,0.5)',
-    borderRadius: '8px',
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    padding: '0.4rem 0.75rem',
+    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(139,92,246,0.6)',
+    borderRadius: '10px',
     transition: 'transform 0.2s, box-shadow 0.2s',
-    boxShadow: '0 4px 12px rgba(99,102,241,0.25)',
+    boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
   },
   header: {
     display: 'flex',
     alignItems: 'center',
-    gap: '1rem',
-    marginBottom: '2rem',
+    gap: '0.875rem',
+    marginBottom: '1.25rem',
   },
   logo: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '48px',
-    height: '48px',
-    background: 'rgba(99,102,241,0.12)',
-    border: '1px solid rgba(99,102,241,0.25)',
+    width: '44px',
+    height: '44px',
+    background: 'rgba(99,102,241,0.15)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(99,102,241,0.3)',
     borderRadius: '14px',
     flexShrink: 0,
+    boxShadow: '0 4px 16px rgba(99,102,241,0.25)',
   },
   title: {
-    fontSize: '1.2rem',
-    fontWeight: 700,
-    color: '#f1f5f9',
-    margin: '0 0 0.2rem',
+    fontSize: '1.25rem',
+    fontWeight: 800,
+    color: '#ffffff',
+    margin: '0 0 0.15rem',
+    letterSpacing: '-0.01em',
   },
   subtitle: {
-    fontSize: '0.8rem',
-    color: '#64748b',
+    fontSize: '0.78rem',
+    color: '#94a3b8',
     margin: 0,
   },
 
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.875rem',
+    gap: '0.75rem',
     marginBottom: '1.25rem',
+  },
+  inputWrapper: {
+    position: 'relative',
+    width: '100%',
   },
   input: {
     width: '100%',
-    padding: '0.75rem 1rem',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '10px',
-    color: '#f1f5f9',
-    fontSize: '0.9rem',
+    padding: '0.75rem 2.2rem 0.75rem 1rem',
+    background: 'rgba(0,0,0,0.4)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: '12px',
+    color: '#ffffff',
+    fontSize: '0.875rem',
     outline: 'none',
     boxSizing: 'border-box',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
   },
+  clearInputBtn: {
+    position: 'absolute',
+    right: '0.75rem',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    color: '#94a3b8',
+    fontSize: '1.1rem',
+    cursor: 'pointer',
+    padding: 0,
+  },
+
+  presetContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.35rem',
+    flexWrap: 'wrap',
+  },
+  presetLabel: {
+    fontSize: '0.72rem',
+    color: '#64748b',
+    fontWeight: 600,
+    marginRight: '0.2rem',
+  },
+  presetChip: {
+    background: 'rgba(255,255,255,0.04)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: '6px',
+    color: '#94a3b8',
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    padding: '0.15rem 0.5rem',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  presetChipActive: {
+    background: 'rgba(99,102,241,0.2)',
+    borderColor: 'rgba(99,102,241,0.5)',
+    color: '#a5b4fc',
+  },
+
   submitButton: {
     width: '100%',
-    padding: '0.75rem 1.5rem',
-    background: 'rgba(99,102,241,0.15)',
-    border: '1px solid rgba(99,102,241,0.45)',
-    borderRadius: '10px',
-    color: '#e0e7ff',
-    fontSize: '0.9rem',
+    padding: '0.75rem 1.25rem',
+    background: 'linear-gradient(135deg, rgba(99,102,241,0.3) 0%, rgba(79,70,229,0.35) 100%)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(99,102,241,0.6)',
+    borderRadius: '12px',
+    color: '#ffffff',
+    fontSize: '0.875rem',
     fontWeight: 700,
     cursor: 'pointer',
-    transition: 'background 0.2s, border-color 0.2s',
+    transition: 'all 0.2s',
+    boxShadow: '0 4px 14px rgba(99,102,241,0.25)',
   },
 
   errorContainer: {
     padding: '0.75rem 1rem',
-    background: 'rgba(239,68,68,0.1)',
-    border: '1px solid rgba(239,68,68,0.2)',
-    borderRadius: '10px',
+    background: 'rgba(239,68,68,0.12)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(239,68,68,0.3)',
+    borderRadius: '12px',
     marginBottom: '1.25rem',
   },
   errorText: {
     color: '#fca5a5',
-    fontSize: '0.85rem',
+    fontSize: '0.82rem',
     margin: 0,
     textAlign: 'center',
+    lineHeight: 1.4,
   },
 
   resultCard: {
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.09)',
+    background: 'linear-gradient(165deg, rgba(99,102,241,0.14) 0%, rgba(15,23,42,0.7) 100%)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(99,102,241,0.35)',
     borderRadius: '14px',
-    padding: '1.25rem',
+    padding: '1.1rem',
     marginBottom: '1.25rem',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
   },
-  resultBadge: {
-    display: 'inline-block',
-    padding: '0.2rem 0.6rem',
-    background: 'rgba(74,222,128,0.12)',
-    border: '1px solid rgba(74,222,128,0.3)',
-    borderRadius: '20px',
+  resultHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: '0.75rem',
   },
   resultBadgeText: {
     color: '#4ade80',
-    fontSize: '0.75rem',
-    fontWeight: 600,
-  },
-  resultTitle: {
-    fontSize: '1.1rem',
+    fontSize: '0.72rem',
     fontWeight: 700,
-    color: '#f1f5f9',
-    margin: '0 0 0.875rem',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+    background: 'rgba(74,222,128,0.12)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(74,222,128,0.3)',
+    borderRadius: '20px',
+    padding: '0.2rem 0.6rem',
+  },
+  resultSectionNumber: {
+    fontSize: '1.1rem',
+    fontWeight: 900,
+    color: '#ffffff',
   },
   resultDetails: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.6rem',
-    marginBottom: '0.875rem',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '0.5rem',
+    marginBottom: '0.75rem',
   },
   detailItem: {
+    background: 'rgba(0,0,0,0.4)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderRadius: '10px',
+    padding: '0.5rem 0.65rem',
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: '0.6rem',
-    borderBottom: '1px solid rgba(255,255,255,0.05)',
+    flexDirection: 'column',
+    gap: '0.15rem',
   },
   detailLabel: {
     color: '#94a3b8',
-    fontSize: '0.85rem',
+    fontSize: '0.65rem',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
   },
   detailValue: {
     color: '#f8fafc',
-    fontSize: '0.9rem',
-    fontWeight: 500,
+    fontSize: '0.85rem',
+    fontWeight: 600,
+  },
+  detailValueHighlight: {
+    color: '#f59e0b',
+    fontSize: '0.85rem',
+    fontWeight: 700,
   },
   hint: {
-    color: '#64748b',
+    color: '#cbd5e1',
     fontSize: '0.78rem',
     margin: 0,
-    lineHeight: 1.5,
+    lineHeight: 1.45,
   },
 
-  legend: {
-    marginTop: 'auto',
-    paddingTop: '1.5rem',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-    borderTop: '1px solid rgba(255,255,255,0.06)',
-  },
-  legendItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    color: '#64748b',
-    fontSize: '0.8rem',
-  },
-  dot: {
-    width: '10px',
-    height: '10px',
-    borderRadius: '50%',
-    flexShrink: 0,
-    display: 'inline-block',
-  },
-
-  // ── Amenity toggles ───────────────────────────────────────────────────────
+  // ── Amenity Toggles ───────────────────────────────────────────────────────
   amenitySection: {
-    paddingTop: '1.25rem',
-    marginTop: '0.5rem',
-    borderTop: '1px solid rgba(255,255,255,0.06)',
+    paddingTop: '1rem',
+    borderTop: '1px solid rgba(255,255,255,0.08)',
+    marginBottom: '1.25rem',
   },
   amenityHeader: {
     display: 'flex',
@@ -681,56 +900,75 @@ const styles: Record<string, React.CSSProperties> = {
   },
   amenityTitle: {
     fontSize: '0.82rem',
-    fontWeight: 700,
-    color: '#e2e8f0',
+    fontWeight: 800,
+    color: '#f1f5f9',
     margin: 0,
     letterSpacing: '0.02em',
+    textTransform: 'uppercase' as const,
   },
   amenityToggleAll: {
     background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255,255,255,0.12)',
     borderRadius: '6px',
-    color: '#94a3b8',
-    fontSize: '0.72rem',
-    fontWeight: 600,
-    padding: '0.2rem 0.6rem',
+    color: '#cbd5e1',
+    fontSize: '0.7rem',
+    fontWeight: 700,
+    padding: '0.2rem 0.55rem',
     cursor: 'pointer',
+    transition: 'all 0.15s',
   },
   amenityGrid: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.4rem',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '0.45rem',
   },
-  amenityItem: {
+  amenityCard: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.45rem',
+    justifyContent: 'space-between',
+    padding: '0.45rem 0.55rem',
+    borderRadius: '10px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'transparent',
     cursor: 'pointer',
-    padding: '0.25rem 0.35rem',
-    borderRadius: '6px',
-    transition: 'background 0.15s',
+    transition: 'all 0.2s ease',
     userSelect: 'none' as const,
   },
-  amenityCheckbox: {
-    accentColor: '#6366f1',
-    cursor: 'pointer',
-    width: '13px',
-    height: '13px',
+  switchTrack: {
+    width: '24px',
+    height: '14px',
+    borderRadius: '10px',
+    position: 'relative' as const,
+    transition: 'background 0.2s',
     flexShrink: 0,
   },
+  switchThumb: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    background: '#ffffff',
+    position: 'absolute' as const,
+    top: '2px',
+    transition: 'transform 0.2s ease-in-out',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+  },
   amenityDot: {
-    width: '8px',
-    height: '8px',
+    width: '7px',
+    height: '7px',
     borderRadius: '50%',
     flexShrink: 0,
     display: 'inline-block',
     transition: 'box-shadow 0.2s',
   },
   amenityLabel: {
-    color: '#94a3b8',
-    fontSize: '0.78rem',
-    fontWeight: 500,
-    lineHeight: 1.3,
+    fontSize: '0.72rem',
+    lineHeight: 1.2,
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
   },
   amenityHint: {
     color: '#64748b',
@@ -740,11 +978,49 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.4,
   },
 
-  // ── Canvas ─────────────────────────────────────────────────────────────────
+  // ── Legend Container ─────────────────────────────────────────────────────
+  legendContainer: {
+    paddingTop: '1rem',
+    borderTop: '1px solid rgba(255,255,255,0.08)',
+    marginTop: 'auto',
+  },
+  legendTitle: {
+    fontSize: '0.75rem',
+    fontWeight: 800,
+    color: '#94a3b8',
+    margin: '0 0 0.6rem',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+  },
+  legendGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '0.5rem',
+  },
+  legendItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.45rem',
+    color: '#cbd5e1',
+    fontSize: '0.78rem',
+    fontWeight: 500,
+  },
+  dot: {
+    width: '9px',
+    height: '9px',
+    borderRadius: '50%',
+    flexShrink: 0,
+    display: 'inline-block',
+  },
+
+  // ── Canvas Area ────────────────────────────────────────────────────────────
   canvasWrapper: {
     flex: 1,
     position: 'relative',
-    minHeight: '100vh',
+    height: '100vh',
+    maxHeight: '100vh',
+    overflow: 'hidden',
+    background: '#07090e',
   },
   canvasPlaceholder: {
     width: '100%',
@@ -752,20 +1028,39 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    background: '#07090e',
   },
-  dragHint: {
+  spinner: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '50%',
+    borderWidth: '3px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(99,102,241,0.2)',
+    borderTopColor: '#6366f1',
+    animation: 'spin 1s linear infinite',
+  },
+  dragHintBox: {
     position: 'absolute',
-    bottom: '1.25rem',
+    bottom: '1.5rem',
     left: '50%',
     transform: 'translateX(-50%)',
-    color: 'rgba(148,163,184,0.6)',
-    fontSize: '0.78rem',
+    background: 'rgba(15, 23, 42, 0.75)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(12px)',
+    borderRadius: '20px',
+    padding: '0.4rem 1rem',
+    color: '#cbd5e1',
+    fontSize: '0.75rem',
+    fontWeight: 600,
     pointerEvents: 'none',
-    margin: 0,
     whiteSpace: 'nowrap',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
   },
 
-  // ── Stadium name overlay ─────────────────────────────────────────────────────
+  // ── Stadium Name Overlay ───────────────────────────────────────────────────
   stadiumName: {
     position: 'absolute',
     top: '1.25rem',
@@ -775,44 +1070,69 @@ const styles: Record<string, React.CSSProperties> = {
     pointerEvents: 'none',
     userSelect: 'none',
   },
+  stadiumBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    background: 'rgba(15, 23, 42, 0.75)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+    backdropFilter: 'blur(12px)',
+    borderRadius: '20px',
+    padding: '0.35rem 1rem',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+  },
+  stadiumLiveDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: '#22c55e',
+    boxShadow: '0 0 8px #22c55e',
+  },
   stadiumNameText: {
     fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-    fontSize: '1.05rem',
-    fontWeight: 700,
+    fontSize: '0.85rem',
+    fontWeight: 800,
     letterSpacing: '0.12em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(241, 245, 249, 0.55)',
-    textShadow: '0 1px 8px rgba(99, 102, 241, 0.25)',
+    color: '#f8fafc',
   },
 
-  map2dButton: {
-    display: 'inline-flex',
+  // ── Camera Controls Bar Overlay ─────────────────────────────────────────────
+  cameraControlsBar: {
+    position: 'absolute',
+    top: '1.25rem',
+    right: '1.5rem',
+    zIndex: 10,
+    display: 'flex',
     alignItems: 'center',
-    gap: '0.2rem',
-    color: '#a5b4fc',
-    textDecoration: 'none',
-    background: 'rgba(99,102,241,0.1)',
-    border: '1px solid rgba(99,102,241,0.3)',
-    borderRadius: '8px',
-    padding: '0.4rem 0.65rem',
-    fontSize: '0.8rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'all 0.2s',
+    gap: '0.35rem',
+    background: 'rgba(15, 23, 42, 0.75)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backdropFilter: 'blur(12px)',
+    borderRadius: '12px',
+    padding: '0.3rem 0.4rem',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
   },
-  guideTriggerButton: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.2rem',
-    color: '#cbd5e1',
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.12)',
+  cameraBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: '#94a3b8',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    padding: '0.3rem 0.65rem',
     borderRadius: '8px',
-    padding: '0.4rem 0.65rem',
-    fontSize: '0.8rem',
-    fontWeight: 500,
     cursor: 'pointer',
-    transition: 'all 0.2s',
+    transition: 'all 0.15s',
+  },
+  cameraBtnActive: {
+    background: 'rgba(99, 102, 241, 0.25)',
+    color: '#ffffff',
+    fontWeight: 700,
+    boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)',
   },
 
   // ── Modal Styles ────────────────────────────────────────────────────────────
@@ -820,24 +1140,25 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'fixed',
     inset: 0,
     zIndex: 99999,
-    background: 'rgba(5, 8, 16, 0.75)',
+    background: 'rgba(5, 8, 16, 0.8)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: '1.5rem',
-    animation: 'fan-fadeSlideUp 0.25s ease both',
   },
   modalContent: {
     position: 'relative',
     width: '100%',
     maxWidth: '560px',
-    background: 'linear-gradient(165deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.98) 100%)',
-    border: '1px solid rgba(99, 102, 241, 0.3)',
+    background: 'linear-gradient(165deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 15, 30, 0.99) 100%)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(99, 102, 241, 0.35)',
     borderRadius: '20px',
     boxShadow:
-      '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+      '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.25)',
     padding: '2rem',
     display: 'flex',
     flexDirection: 'column',
@@ -851,7 +1172,9 @@ const styles: Record<string, React.CSSProperties> = {
     height: '32px',
     borderRadius: '50%',
     background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255,255,255,0.1)',
     color: '#94a3b8',
     fontSize: '0.9rem',
     cursor: 'pointer',
@@ -870,7 +1193,9 @@ const styles: Record<string, React.CSSProperties> = {
     alignSelf: 'flex-start',
     padding: '0.25rem 0.65rem',
     background: 'rgba(99, 102, 241, 0.15)',
-    border: '1px solid rgba(99, 102, 241, 0.35)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(99, 102, 241, 0.35)',
     borderRadius: '20px',
     color: '#a5b4fc',
     fontSize: '0.75rem',
@@ -896,7 +1221,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   guideCard: {
     background: 'rgba(255, 255, 255, 0.03)',
-    border: '1px solid rgba(255, 255, 255, 0.07)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255, 255, 255, 0.07)',
     borderRadius: '12px',
     padding: '0.9rem 1rem',
     display: 'flex',

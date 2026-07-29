@@ -652,8 +652,13 @@ export default function OpsDashboardPage() {
         }
 
         .ops-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(148, 163, 184, 0.2) rgba(15, 23, 42, 0.8);
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .ops-scrollbar::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
         }
       `}</style>
 

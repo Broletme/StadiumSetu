@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Line, Html, Text } from '@react-three/drei';
 import * as THREE from 'three';
@@ -1067,10 +1067,12 @@ function Scene({
   zone,
   uniqueGates,
   activeAmenities,
+  cameraMode = 'default',
 }: {
   zone: Zone | null;
   uniqueGates: Gate[];
   activeAmenities: Set<AmenityType>;
+  cameraMode?: 'default' | 'top' | 'pitch';
 }) {
   return (
     <>
@@ -1146,15 +1148,39 @@ function Scene({
       {/* ── Animated path when a zone is found ───────────────────────────── */}
       {zone && <PathLine key={zone.id} zone={zone} />}
 
-      {/* ── Orbit controls ───────────────────────────────────────────────── */}
-      <OrbitControls
-        enablePan={false}
-        minDistance={8}
-        maxDistance={35}
-        minPolarAngle={0.15}
-        maxPolarAngle={Math.PI / 2.3}
-      />
+      {/* ── Orbit controls with mode support ─────────────────────────────── */}
+      <CameraController cameraMode={cameraMode} />
     </>
+  );
+}
+
+function CameraController({ cameraMode }: { cameraMode: 'default' | 'top' | 'pitch' }) {
+  const controlsRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!controlsRef.current) return;
+    if (cameraMode === 'top') {
+      controlsRef.current.object.position.set(0, 42, 0.1);
+      controlsRef.current.target.set(0, 0, 0);
+    } else if (cameraMode === 'pitch') {
+      controlsRef.current.object.position.set(0, 4, 18);
+      controlsRef.current.target.set(0, 2, 0);
+    } else {
+      controlsRef.current.object.position.set(0, 25, 35);
+      controlsRef.current.target.set(0, 0, 0);
+    }
+    controlsRef.current.update();
+  }, [cameraMode]);
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      enablePan={true}
+      minDistance={6}
+      maxDistance={48}
+      minPolarAngle={0.05}
+      maxPolarAngle={Math.PI / 2.15}
+    />
   );
 }
 
@@ -1164,10 +1190,12 @@ export default function StadiumScene({
   zone,
   uniqueGates,
   activeAmenities = new Set(),
+  cameraMode = 'default',
 }: {
   zone: Zone | null;
   uniqueGates: Gate[];
   activeAmenities?: Set<AmenityType>;
+  cameraMode?: 'default' | 'top' | 'pitch';
 }) {
   return (
     <Canvas
@@ -1175,7 +1203,13 @@ export default function StadiumScene({
       camera={{ position: [0, 25, 35], fov: 50 }}
       style={{ background: 'transparent' }}
     >
-      <Scene zone={zone} uniqueGates={uniqueGates} activeAmenities={activeAmenities} />
+      <Scene
+        zone={zone}
+        uniqueGates={uniqueGates}
+        activeAmenities={activeAmenities}
+        cameraMode={cameraMode}
+      />
     </Canvas>
   );
 }
+
