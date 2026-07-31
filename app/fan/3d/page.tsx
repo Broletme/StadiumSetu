@@ -158,9 +158,54 @@ function Fan3DContent() {
   const uniqueGates = useMemo(() => knownGates, [knownGates]);
 
   return (
-    <div style={styles.root}>
+    <div style={styles.root} className="fan3d-root">
+      <style>{`
+        @media (max-width: 768px) {
+          .fan3d-root {
+            flex-direction: column !important;
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+          }
+          .fan3d-panel {
+            width: 100% !important;
+            min-width: 100% !important;
+            height: auto !important;
+            max-height: 220px !important;
+            padding: 0.75rem 1rem !important;
+            border-right: none !important;
+            border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+            flex-shrink: 0 !important;
+          }
+          .fan3d-canvas-wrapper {
+            flex: 1 !important;
+            height: 100% !important;
+            min-height: 0 !important;
+            position: relative !important;
+          }
+          .fan3d-camera-bar {
+            bottom: 12px !important;
+            right: 12px !important;
+            top: auto !important;
+            left: auto !important;
+            transform: none !important;
+            padding: 4px 8px !important;
+            gap: 4px !important;
+          }
+          .fan3d-stadium-name {
+            top: 10px !important;
+            left: 10px !important;
+          }
+          .fan3d-drag-hint {
+            display: none !important;
+          }
+          .fan3d-header {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       {/* ── Left Sidebar Panel ────────────────────────────────────────────── */}
-      <div style={styles.panel} className="ops-scrollbar">
+      <div style={styles.panel} className="fan3d-panel ops-scrollbar">
         {/* Top Nav Pill Bar */}
         <div style={styles.topNav}>
           <Link href="/dashboard" style={styles.backButton}>
@@ -184,7 +229,7 @@ function Fan3DContent() {
         </div>
 
         {/* Brand Header */}
-        <div style={styles.header}>
+        <div style={styles.header} className="fan3d-header">
           <div style={styles.logo}>
             <svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#fanLogoGrad)" />
@@ -413,9 +458,9 @@ function Fan3DContent() {
       </div>
 
       {/* ── 3-D Canvas Area ───────────────────────────────────────────────── */}
-      <div style={styles.canvasWrapper}>
+      <div style={styles.canvasWrapper} className="fan3d-canvas-wrapper">
         {/* Stadium Title Overlay */}
-        <div style={styles.stadiumName}>
+        <div style={styles.stadiumName} className="fan3d-stadium-name">
           <div style={styles.stadiumBadge}>
             <span style={styles.stadiumLiveDot} />
             <span style={styles.stadiumNameText}>STADIUMSETU ARENA</span>
@@ -423,7 +468,7 @@ function Fan3DContent() {
         </div>
 
         {/* Camera View Mode Preset Bar Overlay */}
-        <div style={styles.cameraControlsBar}>
+        <div style={styles.cameraControlsBar} className="fan3d-camera-bar">
           <button
             type="button"
             onClick={() => setCameraMode('default')}
@@ -464,7 +509,7 @@ function Fan3DContent() {
         />
 
         {/* Drag & Controls Overlay Hint */}
-        <div style={styles.dragHintBox}>
+        <div style={styles.dragHintBox} className="fan3d-drag-hint">
           <span>🖱️ Drag to rotate &bull; Scroll to zoom &bull; Right-click to pan</span>
         </div>
       </div>

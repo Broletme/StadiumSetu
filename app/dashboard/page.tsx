@@ -241,9 +241,15 @@ export default function DashboardPage() {
         .db-right-col { flex: 0 0 460px; width: 460px; }
 
         @media (max-width: 1023px) {
+          .db-root {
+            overflow-y: auto !important;
+            min-height: 100dvh !important;
+            align-items: center !important;
+            padding: 2rem 1rem !important;
+          }
           .db-two-col {
             flex-direction: column !important; align-items: stretch !important;
-            gap: 2rem !important; padding: 1.5rem 1rem !important; max-width: 560px !important;
+            gap: 2rem !important; padding: 0 !important; max-width: 560px !important;
           }
           .db-right-col { flex: 1 1 auto !important; width: 100% !important; }
           .db-football-wrap { display: none !important; }
@@ -251,16 +257,16 @@ export default function DashboardPage() {
           .db-stadium-ring-outer { display: none; }
         }
         @media (max-width: 640px) {
-          .db-root { padding: 0 !important; align-items: flex-start !important; }
-          .db-outer-card { border-radius: 0 !important; }
-          .db-card { padding: 1.25rem !important; }
-          .db-header-row { gap: 0.5rem !important; }
-          .db-subtitle { max-width: 140px !important; font-size: 0.75rem !important; }
-          .db-signout { padding: 0.35rem 0.6rem !important; font-size: 0.7rem !important; }
+          .db-root { padding: 1.25rem 0.85rem !important; align-items: flex-start !important; }
+          .db-outer-card { border-radius: 16px !important; }
+          .db-card { padding: 1.25rem 1rem !important; }
+          .db-header-row { gap: 0.5rem !important; flex-wrap: wrap !important; }
+          .db-subtitle { max-width: 180px !important; font-size: 0.75rem !important; }
+          .db-signout { padding: 0.4rem 0.65rem !important; font-size: 0.75rem !important; }
           .db-feature-card  { padding: 1rem !important; }
           .db-feature-title { font-size: 0.95rem !important; }
-          .db-two-col { padding: 0 !important; gap: 0 !important; max-width: 100% !important; }
-          .db-hero-col { padding: 1.25rem 1.25rem 0 !important; }
+          .db-two-col { padding: 0 !important; gap: 1.5rem !important; max-width: 100% !important; }
+          .db-hero-col { padding: 0.5rem 0.25rem 0 !important; }
         }
       `}</style>
 

@@ -48,11 +48,51 @@ export default function FanMapPage() {
   }, []);
 
   return (
-    <div style={styles.root}>
+    <div style={styles.root} className="map-root">
+      <style>{`
+        @media (max-width: 768px) {
+          .map-root {
+            flex-direction: column !important;
+            height: 100dvh !important;
+          }
+          .map-panel {
+            width: 100% !important;
+            min-width: 100% !important;
+            padding: 0.75rem 1rem !important;
+            border-right: none !important;
+            border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+            max-height: 180px !important;
+            flex-shrink: 0 !important;
+          }
+          .map-header {
+            display: none !important;
+          }
+          .map-top-nav {
+            margin-bottom: 0.5rem !important;
+          }
+          .map-amenity-grid {
+            display: flex !important;
+            flex-direction: row !important;
+            overflow-x: auto !important;
+            gap: 0.4rem !important;
+            padding-bottom: 0.25rem !important;
+            scrollbar-width: none !important;
+          }
+          .map-amenity-card {
+            flex-shrink: 0 !important;
+            padding: 0.35rem 0.6rem !important;
+          }
+          .map-wrapper {
+            flex: 1 !important;
+            min-height: 0 !important;
+          }
+        }
+      `}</style>
+
       {/* ── Left panel ─────────────────────────────────────────────────── */}
-      <div style={styles.panel}>
+      <div style={styles.panel} className="map-panel">
         {/* Top nav */}
-        <div style={styles.topNav}>
+        <div style={styles.topNav} className="map-top-nav">
           <Link href="/fan/3d" style={styles.backButton}>
             ← 3D View
           </Link>
@@ -62,7 +102,7 @@ export default function FanMapPage() {
         </div>
 
         {/* Header */}
-        <div style={styles.header}>
+        <div style={styles.header} className="map-header">
           <div style={styles.logo}>
             <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <path d="M16 2L2 10v12l14 8 14-8V10L16 2z" fill="url(#dg2)" />
@@ -96,7 +136,7 @@ export default function FanMapPage() {
               {activeAmenities.size > 0 ? 'Hide All' : 'Show All'}
             </button>
           </div>
-          <div style={styles.amenityGrid}>
+          <div style={styles.amenityGrid} className="map-amenity-grid">
             {ALL_TYPES.map((type) => {
               const isActive = activeAmenities.has(type);
               const isHighlighted = highlightedType === type;
@@ -108,6 +148,7 @@ export default function FanMapPage() {
                   onClick={() => toggleAmenity(type)}
                   onMouseEnter={() => setHighlightedType(type)}
                   onMouseLeave={() => setHighlightedType(null)}
+                  className="map-amenity-card"
                   style={{
                     ...styles.amenityCard,
                     background: isActive
@@ -185,7 +226,7 @@ export default function FanMapPage() {
       </div>
 
       {/* ── Map area ────────────────────────────────────────────────────── */}
-      <div style={styles.mapWrapper}>
+      <div style={styles.mapWrapper} className="map-wrapper">
         <div style={styles.mapTitle}>
           <span style={styles.mapTitleText}>StadiumSetu Arena — 2D Overview</span>
         </div>

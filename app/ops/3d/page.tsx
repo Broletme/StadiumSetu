@@ -126,7 +126,7 @@ function PriorityPanel({
       borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)',
       padding: '8px 0', minWidth: 200, maxWidth: 220,
       boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-    }}>
+    }} className="ops3d-priority-panel">
       <div style={{
         padding: '4px 14px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)',
         marginBottom: 4, fontSize: '0.62rem', fontWeight: 700,
@@ -289,6 +289,34 @@ function Ops3DContent() {
       width: '100vw', height: '100vh', background: '#0a0a0f', overflow: 'hidden',
       position: 'relative', fontFamily: "'Inter', system-ui, sans-serif",
     }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .ops3d-priority-panel {
+            top: auto !important;
+            bottom: 12px !important;
+            left: 12px !important;
+            transform: none !important;
+            max-width: 170px !important;
+            max-height: 180px !important;
+          }
+          .ops3d-top-title {
+            display: none !important;
+          }
+          .ops3d-legend {
+            bottom: 12px !important;
+            left: 50% !important;
+            padding: 4px 10px !important;
+            gap: 8px !important;
+          }
+          .ops3d-minimap {
+            bottom: 12px !important;
+            right: 12px !important;
+            width: 80px !important;
+            height: 80px !important;
+          }
+        }
+      `}</style>
+
       <Link href="/ops" style={{
         position: 'absolute', top: 16, left: 16, zIndex: 10,
         color: '#94a3b8', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 500,
@@ -302,7 +330,7 @@ function Ops3DContent() {
       <div style={{
         position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
         textAlign: 'center', pointerEvents: 'none',
-      }}>
+      }} className="ops3d-top-title">
         <h1 style={{ fontSize: '1rem', fontWeight: 700, color: '#f1f5f9', margin: 0, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
           Congestion Heatmap
         </h1>
@@ -319,7 +347,7 @@ function Ops3DContent() {
         background: 'rgba(0,0,0,0.6)', borderRadius: '8px',
         border: '1px solid rgba(255,255,255,0.08)',
         pointerEvents: 'none',
-      }}>
+      }} className="ops3d-legend">
         {([
           { color: '#22c55e', label: 'Low' },
           { color: '#f59e0b', label: 'Medium' },
@@ -346,7 +374,7 @@ function Ops3DContent() {
         border: '1px solid rgba(255,255,255,0.1)',
         boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
         pointerEvents: 'none',
-      }}>
+      }} className="ops3d-minimap">
         <Minimap sections={sections} gates={displayGates} />
       </div>
     </main>

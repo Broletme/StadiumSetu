@@ -443,7 +443,7 @@ export default function FanPage() {
 
         @media (max-width: 720px) {
           .fan-page-root { padding: 0 !important; height: 100dvh !important; }
-          .fan-outer-wrap { gap: 0 !important; border-radius: 0 !important; }
+          .fan-outer-wrap { gap: 0 !important; border-radius: 0 !important; height: 100dvh !important; max-height: 100dvh !important; }
           .fan-chat-col { border-radius: 0 !important; height: 100dvh !important; }
           .fan-sidebar-wrap {
             position: fixed !important;

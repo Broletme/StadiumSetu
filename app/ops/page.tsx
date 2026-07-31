@@ -681,20 +681,26 @@ export default function OpsDashboardPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 text-xs">
-            <span className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-1.5 text-slate-400 font-medium">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="hidden sm:inline-block rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-1.5 text-slate-400 font-medium">
               Updated <span className="text-slate-200 font-semibold">{latestUpdate}</span>
             </span>
             <Link
-              href="/"
-              className="rounded-lg border border-slate-800 bg-slate-900/80 px-3.5 py-1.5 font-semibold text-slate-300 transition hover:border-slate-700 hover:bg-slate-800 hover:text-white"
+              href="/ops/3d"
+              className="rounded-lg border border-indigo-500/40 bg-indigo-500/15 px-3 py-1.5 font-bold text-indigo-300 transition hover:border-indigo-500/60 hover:bg-indigo-500/25 hover:text-white"
             >
-              &larr; Back to Home
+              🏟️ 3D View
+            </Link>
+            <Link
+              href="/dashboard"
+              className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-1.5 font-semibold text-slate-300 transition hover:border-slate-700 hover:bg-slate-800 hover:text-white"
+            >
+              &larr; Dashboard
             </Link>
             <button
               type="button"
               onClick={handleSignOut}
-              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3.5 py-1.5 font-semibold text-rose-300 transition hover:border-rose-500/50 hover:bg-rose-500/20 hover:text-rose-200"
+              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 font-semibold text-rose-300 transition hover:border-rose-500/50 hover:bg-rose-500/20 hover:text-rose-200"
             >
               Sign Out
             </button>

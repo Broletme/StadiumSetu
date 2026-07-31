@@ -505,4 +505,21 @@ const styles = `
     color: #334155;
     margin: 1.5rem 0 0;
   }
+  @media (max-width: 480px) {
+    .login-root {
+      padding: 1rem 0.75rem;
+      min-height: 100dvh;
+      align-items: flex-start;
+      overflow-y: auto;
+    }
+    .login-card {
+      padding: 1.75rem 1.25rem;
+      border-radius: 16px;
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+    .login-title {
+      font-size: 1.35rem;
+    }
+  }
 `;
