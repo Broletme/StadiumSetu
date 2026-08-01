@@ -966,12 +966,15 @@ export default function OpsDashboardPage() {
                             <button
                               type="button"
                               onClick={() => handleResolveGroup(group.key)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300 transition hover:border-emerald-500/60 hover:bg-emerald-500/20 hover:text-emerald-200"
+                              className="group/btn relative inline-flex items-center gap-1.5 overflow-hidden rounded-xl border border-emerald-400/40 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg shadow-emerald-950/80 backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:border-emerald-300 hover:from-emerald-500 hover:to-teal-400 hover:shadow-emerald-500/25 active:scale-[0.98]"
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                              Resolve
+                              <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out" />
+                              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-950/40 text-emerald-200 border border-emerald-300/30 group-hover/btn:bg-white group-hover/btn:text-emerald-700 transition-colors duration-200">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              </span>
+                              <span className="tracking-wide">Resolve</span>
                             </button>
                           </div>
                         </div>
