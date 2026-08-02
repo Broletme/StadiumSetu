@@ -941,9 +941,15 @@ export default function OpsDashboardPage() {
                           {group.sectionNumber ? (
                             <Link
                               href={`/ops/3d?section=${group.sectionNumber}`}
-                              className="inline-flex items-center gap-1 text-xs font-bold text-indigo-400 transition hover:text-indigo-300 hover:translate-x-0.5"
+                              className="group/3d relative inline-flex items-center gap-1.5 overflow-hidden rounded-xl border border-indigo-400/40 bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-500 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg shadow-indigo-950/80 backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:border-indigo-300 hover:from-indigo-500 hover:to-violet-400 hover:shadow-indigo-500/25 active:scale-[0.98]"
                             >
-                              Inspect in 3D &rarr;
+                              <span className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover/3d:opacity-100" />
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 transition-transform duration-200 group-hover/3d:rotate-12">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                <path d="M2 17l10 5 10-5" />
+                                <path d="M2 12l10 5 10-5" />
+                              </svg>
+                              <span className="relative z-10">Inspect 3D</span>
                             </Link>
                           ) : <span />}
 
